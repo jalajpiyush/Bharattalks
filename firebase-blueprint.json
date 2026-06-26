@@ -1,0 +1,84 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "User profile representation in Swiply",
+      "type": "object",
+      "properties": {
+        "email": {
+          "type": "string",
+          "description": "User email address"
+        },
+        "name": {
+          "type": "string",
+          "description": "User display name"
+        },
+        "country": {
+          "type": "string",
+          "description": "User location/country"
+        },
+        "avatar": {
+          "type": "string",
+          "description": "User selected emoji avatar icon"
+        },
+        "isPremium": {
+          "type": "boolean",
+          "description": "True if user is VIP / Premium"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When the user registered"
+        }
+      },
+      "required": ["email", "name"]
+    },
+    "PaymentRecord": {
+      "title": "PaymentRecord",
+      "description": "Premium access subscription payments logged in Firestore",
+      "type": "object",
+      "properties": {
+        "txnid": {
+          "type": "string",
+          "description": "PayU transaction ID"
+        },
+        "amount": {
+          "type": "string",
+          "description": "Payment amount in INR"
+        },
+        "firstname": {
+          "type": "string",
+          "description": "Payer billing first name"
+        },
+        "email": {
+          "type": "string",
+          "description": "Payer registered billing email"
+        },
+        "phone": {
+          "type": "string",
+          "description": "Payer mobile phone digits"
+        },
+        "plan": {
+          "type": "string",
+          "description": "Premium billing plan (monthly or yearly)"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Exact transaction registration timestamp"
+        }
+      },
+      "required": ["txnid", "amount", "email"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "UserProfile",
+      "description": "Durable Firestore registry for Swiply users and their VIP premium subscriptions"
+    },
+    "/payments/{paymentId}": {
+      "schema": "PaymentRecord",
+      "description": "Durable ledger of PayU transactions"
+    }
+  }
+}

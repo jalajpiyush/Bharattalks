@@ -1,5 +1,5 @@
 {
-  "name": "BharatTalk",
+  "name": "Swiply",
   "description": "A premium, modern mobile-first random video chat platform inspired by Monkey. Connect with strangers instantly through live video and text, featuring AI matchmaking and smart moderation.",
   "requestFramePermissions": ["camera", "microphone"],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]

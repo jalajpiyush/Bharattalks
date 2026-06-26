@@ -9,32 +9,32 @@ import { motion } from "motion/react";
 export default function Statistics() {
   const stats = [
     {
-      value: "10M+",
-      label: "Connections",
+      value: "1.2K+",
+      label: "Active Members",
       icon: Users,
-      color: "from-[#10a37f] to-[#0fa47f]",
-      glowColor: "rgba(16, 163, 127, 0.25)"
+      color: "from-[#4F8FFF] to-[#6AA8FF]",
+      glowColor: "rgba(79, 143, 255, 0.25)"
     },
     {
-      value: "150+",
-      label: "Countries",
+      value: "45+",
+      label: "Regions Connected",
       icon: Globe,
       color: "from-gray-700 to-gray-800",
       glowColor: "rgba(255, 255, 255, 0.05)"
     },
     {
-      value: "500K+",
-      label: "Daily Chats",
+      value: "1.5K+",
+      label: "Daily Video Chats",
       icon: MessageSquareCode,
-      color: "from-[#10a37f] to-emerald-600",
-      glowColor: "rgba(16, 163, 127, 0.25)"
+      color: "from-[#6AA8FF] to-[#7CB8FF]",
+      glowColor: "rgba(106, 168, 255, 0.25)"
     },
     {
       value: "99.9%",
-      label: "Uptime",
+      label: "Server Uptime",
       icon: Activity,
-      color: "from-emerald-500 to-teal-600",
-      glowColor: "rgba(16, 163, 127, 0.2)"
+      color: "from-[#30D158] to-emerald-600",
+      glowColor: "rgba(48, 209, 88, 0.25)"
     }
   ];
 
@@ -42,7 +42,7 @@ export default function Statistics() {
     <section className="w-full px-4 py-8 md:px-8 max-w-7xl mx-auto">
       <div className="rounded-3xl glass-panel p-6 md:p-8 border border-white/5 shadow-2xl relative overflow-hidden">
         {/* Glow element */}
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-32 bg-[#10a37f]/5 rounded-full blur-3xl" />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-32 bg-[#4F8FFF]/5 rounded-full blur-3xl" />
         
         <div className="grid grid-cols-2 gap-6 md:grid-cols-4 md:divide-x md:divide-white/10 relative z-10">
           {stats.map((stat, idx) => {

@@ -9,6 +9,10 @@ export interface Message {
   sender: string;
   text: string;
   timestamp: string; // ISO String
+  sentiment?: {
+    tone: string;
+    emoji: string;
+  };
 }
 
 export interface Partner {

@@ -5,6 +5,22 @@
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
   --font-display: "Space Grotesk", sans-serif;
   --font-mono: "JetBrains Mono", monospace;
+  --animate-shimmer: shimmer 1.8s infinite linear;
+  --color-primary-blue: #5c4cf4;
+  --color-secondary-blue: #7062ff;
+  --color-accent-blue: #e2e0ff;
+  --color-dark-bg: #5c4cf4;
+  --color-card-bg: rgba(255, 255, 255, 0.1);
+  --color-success-green: #30D158;
+}
+
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
 }
 
 /* Custom keyframe animations for floating elements and pulses */
@@ -37,21 +53,21 @@
   }
 }
 
-/* Glassmorphism Classes styled for ChatGPT Obsidian & Mint Theme */
+/* Glassmorphism Classes styled for Premium Swiply Blue Theme */
 .glass-panel {
-  background: rgba(33, 33, 33, 0.5);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
+  background: rgba(18, 24, 38, 0.65);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
   border: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 20px 45px -15px rgba(0, 0, 0, 0.6);
 }
 
 .glass-panel-heavy {
-  background: rgba(23, 23, 23, 0.85);
-  backdrop-filter: blur(35px);
-  -webkit-backdrop-filter: blur(35px);
+  background: rgba(18, 24, 38, 0.92);
+  backdrop-filter: blur(40px);
+  -webkit-backdrop-filter: blur(40px);
   border: 1px solid rgba(255, 255, 255, 0.12);
-  box-shadow: 0 30px 60px -15px rgba(0, 0, 0, 0.7);
+  box-shadow: 0 30px 60px -15px rgba(0, 0, 0, 0.75);
 }
 
 .glass-panel-light {
@@ -74,16 +90,16 @@
   animation: pulse-slow 4s ease-in-out infinite;
 }
 
-/* Custom WebRTC Live Indicator pulse */
+/* Custom WebRTC Live Indicator pulse with Success Green */
 @keyframes wave-pulse {
   0% {
-    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7);
+    box-shadow: 0 0 0 0 rgba(48, 209, 88, 0.7);
   }
   70% {
-    box-shadow: 0 0 0 10px rgba(239, 68, 68, 0);
+    box-shadow: 0 0 0 10px rgba(48, 209, 88, 0);
   }
   100% {
-    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0);
+    box-shadow: 0 0 0 0 rgba(48, 209, 88, 0);
   }
 }
 
@@ -111,19 +127,19 @@
   background: rgba(255, 255, 255, 0.3);
 }
 
-/* Custom glow borders with ChatGPT Green */
+/* Custom glow borders with Premium Blue */
 .glow-primary {
-  box-shadow: 0 0 30px rgba(16, 163, 127, 0.25);
+  box-shadow: 0 0 35px rgba(79, 143, 255, 0.25);
 }
 
 .glow-accent {
-  box-shadow: 0 0 25px rgba(16, 163, 127, 0.15);
+  box-shadow: 0 0 25px rgba(106, 168, 255, 0.15);
 }
 
 /* Global Reset overrides */
 body {
-  color: #ececec;
-  background-color: #0d0d0d;
+  color: #FFFFFF;
+  background-color: #5c4cf4;
   overflow-x: hidden;
   font-family: 'Inter', system-ui, -apple-system, sans-serif;
 }

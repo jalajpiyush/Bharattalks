@@ -1,0 +1,52 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Helper to validate document IDs
+    function isValidId(id) {
+      return id.matches('^[a-zA-Z0-9_\\-\\.\\@]+$') && id.size() < 128;
+    }
+
+    // Helper to check standard user profile schema
+    function isValidUserProfile(data) {
+      return data.keys().hasAll(['email', 'name'])
+        && data.email is string
+        && data.email.size() <= 100
+        && data.name is string
+        && data.name.size() <= 100
+        && (!data.keys().contains('country') || (data.country is string && data.country.size() <= 100))
+        && (!data.keys().contains('avatar') || (data.avatar is string && data.avatar.size() <= 20))
+        && (!data.keys().contains('isPremium') || data.isPremium is bool)
+        && (!data.keys().contains('createdAt') || data.createdAt is string)
+        && (!data.keys().contains('password') || (data.password is string && data.password.size() <= 100));
+    }
+
+    // Helper to check standard payment record schema
+    function isValidPaymentRecord(data) {
+      return data.keys().hasAll(['txnid', 'amount', 'email'])
+        && data.txnid is string
+        && data.txnid.size() <= 100
+        && data.amount is string
+        && data.amount.size() <= 20
+        && data.email is string
+        && data.email.size() <= 100
+        && (!data.keys().contains('firstname') || (data.firstname is string && data.firstname.size() <= 100))
+        && (!data.keys().contains('phone') || (data.phone is string && data.phone.size() <= 20))
+        && (!data.keys().contains('plan') || (data.plan is string && data.plan.size() <= 50))
+        && (!data.keys().contains('timestamp') || data.timestamp is string);
+    }
+
+    match /users/{userId} {
+      allow get: if isValidId(userId);
+      allow list: if true;
+      allow create, update: if isValidId(userId) && isValidUserProfile(request.resource.data);
+      allow delete: if false;
+    }
+
+    match /payments/{paymentId} {
+      allow read: if isValidId(paymentId);
+      allow create: if isValidId(paymentId) && isValidPaymentRecord(request.resource.data);
+      allow update, delete: if false;
+    }
+  }
+}

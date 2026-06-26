@@ -37,14 +37,46 @@ export default function Header({ currentView, setView, onOpenAuth, user, onSignO
         {/* Logo */}
         <button
           onClick={() => handleNavClick("home")}
-          className="flex items-center gap-2.5 text-xl font-bold font-display tracking-tight hover:opacity-95 cursor-pointer text-white"
+          className="flex items-center gap-3 text-xl font-bold font-display tracking-tight hover:opacity-95 cursor-pointer text-white"
           id="btn-logo"
         >
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-tr from-[#10a37f] to-[#0fa47f] shadow-lg shadow-[#10a37f]/30">
-            <Video className="h-5.5 w-5.5 text-white" />
+          <div className="relative flex h-11 w-11 items-center justify-center rounded-2xl bg-white/15 shadow-xl border border-white/20 overflow-hidden group">
+            {/* Glossy overlay effect */}
+            <div className="absolute inset-0 bg-gradient-to-b from-white/20 to-transparent pointer-events-none" />
+            
+            {/* Cute Swiply Mascot SVG - Authentic Yellow */}
+            <svg className="h-8 w-8 drop-shadow-md" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+              {/* Left Ear */}
+              <circle cx="24" cy="50" r="11" fill="#f2b305" />
+              <circle cx="24" cy="50" r="7" fill="#b88100" />
+              
+              {/* Right Ear */}
+              <circle cx="76" cy="50" r="11" fill="#f2b305" />
+              <circle cx="76" cy="50" r="7" fill="#b88100" />
+              
+              {/* Swiply Head */}
+              <circle cx="50" cy="50" r="28" fill="#f2b305" />
+              
+              {/* Heart Face */}
+              <path d="M 50,38 C 42,28 32,34 33,45 C 34,54 45,61 50,64 C 55,61 66,54 67,45 C 68,34 58,28 50,38 Z" fill="#fff7b2" />
+              
+              {/* Eyes */}
+              <circle cx="45" cy="45" r="3.5" fill="#111827" />
+              <circle cx="55" cy="45" r="3.5" fill="#111827" />
+              
+              {/* Smile */}
+              <path d="M 46,52 A 4 4 0 0 0 54,52" stroke="#111827" strokeWidth="2.5" strokeLinecap="round" fill="none" />
+              
+              {/* Blush Cheeks */}
+              <circle cx="39" cy="49" r="2.5" fill="#f87171" opacity="0.8" />
+              <circle cx="61" cy="49" r="2.5" fill="#f87171" opacity="0.8" />
+            </svg>
+
+            {/* Micro Sparkle Indicator */}
+            <div className="absolute -top-1 -right-1 text-[8px] animate-pulse text-[#fff7b2]">✨</div>
           </div>
-          <span className="bg-gradient-to-r from-white via-white to-gray-200 bg-clip-text text-white">
-            Bharat<span className="text-[#10a37f]">Talk</span>
+          <span className="font-display font-black tracking-tight text-3xl text-white">
+            Swiply
           </span>
         </button>
 
@@ -65,7 +97,7 @@ export default function Header({ currentView, setView, onOpenAuth, user, onSignO
                 {isActive && (
                   <motion.div
                     layoutId="activeNavIndicator"
-                    className="absolute -bottom-1 left-0 h-0.5 w-full bg-[#10a37f]"
+                    className="absolute -bottom-1 left-0 h-0.5 w-full bg-[#f2b305]"
                     transition={{ type: "spring", stiffness: 380, damping: 30 }}
                   />
                 )}
@@ -78,10 +110,10 @@ export default function Header({ currentView, setView, onOpenAuth, user, onSignO
         <div className="hidden items-center gap-4 md:flex">
           {user ? (
             <div className="flex items-center gap-3 rounded-full bg-white/5 px-4 py-1.5 border border-white/10">
-              <User className="h-4 w-4 text-[#10a37f]" />
+              <User className="h-4 w-4 text-[#f2b305]" />
               <span className="text-xs font-medium text-white max-w-[150px] truncate flex items-center gap-1.5">
                 {user.name || user.email.split("@")[0]}
-                {localStorage.getItem("bharattalk_premium") === "true" && (
+                {(localStorage.getItem("swiply_premium") === "true" || localStorage.getItem("monkey_premium") === "true" || localStorage.getItem("bharattalk_premium") === "true") && (
                   <Crown className="h-3.5 w-3.5 text-amber-400 fill-amber-400/20 animate-pulse" title="Premium Active" />
                 )}
               </span>
@@ -109,10 +141,10 @@ export default function Header({ currentView, setView, onOpenAuth, user, onSignO
         <div className="flex items-center gap-2 md:hidden">
           {user && (
             <div className="flex items-center gap-1.5 rounded-full bg-white/5 px-3 py-1 border border-white/5">
-              <User className="h-3.5 w-3.5 text-[#10a37f]" />
+              <User className="h-3.5 w-3.5 text-[#f2b305]" />
               <span className="text-2xs font-medium text-white max-w-[80px] truncate flex items-center gap-1">
                 {user.name || user.email.split("@")[0]}
-                {localStorage.getItem("bharattalk_premium") === "true" && (
+                {(localStorage.getItem("swiply_premium") === "true" || localStorage.getItem("monkey_premium") === "true" || localStorage.getItem("bharattalk_premium") === "true") && (
                   <Crown className="h-3 w-3 text-amber-400 fill-amber-400/20" />
                 )}
               </span>
@@ -153,7 +185,7 @@ export default function Header({ currentView, setView, onOpenAuth, user, onSignO
                 >
                   {item.label}
                   {currentView === item.id && (
-                    <span className="h-2 w-2 rounded-full bg-[#10a37f]" />
+                    <span className="h-2 w-2 rounded-full bg-[#f2b305]" />
                   )}
                 </button>
               ))}
@@ -166,7 +198,7 @@ export default function Header({ currentView, setView, onOpenAuth, user, onSignO
                     onSignOut();
                     setMobileMenuOpen(false);
                   }}
-                  className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#10a37f]/15 text-[#10a37f] hover:bg-[#10a37f]/25 px-4 py-3 text-sm font-semibold transition-all cursor-pointer border border-[#10a37f]/25"
+                  className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#f2b305]/15 text-[#f2b305] hover:bg-[#f2b305]/25 px-4 py-3 text-sm font-semibold transition-all cursor-pointer border border-[#f2b305]/25"
                   id="btn-mobile-signout"
                 >
                   <LogOut className="h-4 w-4" />
@@ -178,7 +210,7 @@ export default function Header({ currentView, setView, onOpenAuth, user, onSignO
                     onOpenAuth();
                     setMobileMenuOpen(false);
                   }}
-                  className="flex w-full items-center justify-center rounded-xl bg-[#10a37f] text-white shadow-lg shadow-[#10a37f]/20 hover:bg-[#0fa47f] px-4 py-3 text-sm font-semibold transition-all cursor-pointer"
+                  className="flex w-full items-center justify-center rounded-xl bg-[#f2b305] text-black shadow-lg shadow-[#f2b305]/20 hover:bg-[#d99e04] px-4 py-3 text-sm font-semibold transition-all cursor-pointer"
                   id="btn-mobile-signin"
                 >
                   Sign In

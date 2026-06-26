@@ -20,18 +20,48 @@ export default function Footer() {
   };
 
   return (
-    <footer className="w-full bg-[#0d0d0d] border-t border-white/5 px-4 py-12 md:px-12">
+    <footer className="w-full bg-[#090D16] border-t border-white/5 px-4 py-12 md:px-12">
       <div className="mx-auto max-w-7xl">
         <div className="grid grid-cols-1 gap-10 md:grid-cols-4 lg:grid-cols-5">
           
           {/* Logo & Info column */}
           <div className="md:col-span-1 lg:col-span-2">
             <div className="flex items-center gap-2.5 text-xl font-bold font-display text-white mb-4">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-tr from-[#10a37f] to-[#0fa47f] shadow-lg shadow-[#10a37f]/25">
-                <Video className="h-5.5 w-5.5 text-white" />
+              <div className="relative flex h-11 w-11 items-center justify-center rounded-2xl bg-white/15 shadow-xl border border-white/20 overflow-hidden group">
+                <div className="absolute inset-0 bg-gradient-to-b from-white/15 to-transparent pointer-events-none" />
+                
+                {/* Cute Swiply Mascot SVG - Authentic Yellow */}
+                <svg className="h-8 w-8 drop-shadow-md" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  {/* Left Ear */}
+                  <circle cx="24" cy="50" r="11" fill="#f2b305" />
+                  <circle cx="24" cy="50" r="7" fill="#b88100" />
+                  
+                  {/* Right Ear */}
+                  <circle cx="76" cy="50" r="11" fill="#f2b305" />
+                  <circle cx="76" cy="50" r="7" fill="#b88100" />
+                  
+                  {/* Swiply Head */}
+                  <circle cx="50" cy="50" r="28" fill="#f2b305" />
+                  
+                  {/* Heart Face */}
+                  <path d="M 50,38 C 42,28 32,34 33,45 C 34,54 45,61 50,64 C 55,61 66,54 67,45 C 68,34 58,28 50,38 Z" fill="#fff7b2" />
+                  
+                  {/* Eyes */}
+                  <circle cx="45" cy="45" r="3.5" fill="#111827" />
+                  <circle cx="55" cy="45" r="3.5" fill="#111827" />
+                  
+                  {/* Smile */}
+                  <path d="M 46,52 A 4 4 0 0 0 54,52" stroke="#111827" strokeWidth="2.5" strokeLinecap="round" fill="none" />
+                  
+                  {/* Blush Cheeks */}
+                  <circle cx="39" cy="49" r="2.5" fill="#f87171" opacity="0.8" />
+                  <circle cx="61" cy="49" r="2.5" fill="#f87171" opacity="0.8" />
+                </svg>
+
+                <div className="absolute -top-1 -right-1 text-[8px] animate-pulse text-[#fff7b2]">✨</div>
               </div>
-              <span>
-                Bharat<span className="text-[#10a37f]">Talk</span>
+              <span className="font-display font-black tracking-tight text-3xl text-white">
+                Swiply
               </span>
             </div>
             <p className="text-gray-400 text-sm leading-relaxed max-w-xs mb-6">
@@ -42,7 +72,7 @@ export default function Footer() {
                 href="https://instagram.com"
                 target="_blank"
                 rel="noreferrer"
-                className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:text-white hover:bg-[#10a37f]/20 hover:border-[#10a37f]/30 transition-all cursor-pointer"
+                className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:text-white hover:bg-[#f2b305]/20 hover:border-[#f2b305]/30 transition-all cursor-pointer"
                 id="footer-social-instagram"
               >
                 <Instagram className="h-5 w-5" />
@@ -51,7 +81,7 @@ export default function Footer() {
                 href="https://twitter.com"
                 target="_blank"
                 rel="noreferrer"
-                className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:text-white hover:bg-[#10a37f]/20 hover:border-[#10a37f]/30 transition-all cursor-pointer"
+                className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:text-white hover:bg-[#f2b305]/20 hover:border-[#f2b305]/30 transition-all cursor-pointer"
                 id="footer-social-twitter"
               >
                 <Twitter className="h-5 w-5" />
@@ -60,7 +90,7 @@ export default function Footer() {
                 href="https://discord.com"
                 target="_blank"
                 rel="noreferrer"
-                className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:text-white hover:bg-[#10a37f]/20 hover:border-[#10a37f]/30 transition-all cursor-pointer"
+                className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:text-white hover:bg-[#f2b305]/20 hover:border-[#f2b305]/30 transition-all cursor-pointer"
                 id="footer-social-discord"
               >
                 <MessageSquare className="h-5 w-5" />
@@ -120,19 +150,19 @@ export default function Footer() {
                   placeholder="Enter your email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full rounded-xl bg-white/5 border border-white/10 px-4 py-2.5 pr-12 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-[#10a37f] focus:ring-1 focus:ring-[#10a37f] transition-all"
+                  className="w-full rounded-xl bg-white/5 border border-white/10 px-4 py-2.5 pr-12 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-[#f2b305] focus:ring-1 focus:ring-[#f2b305] transition-all"
                   id="newsletter-email"
                 />
                 <button
                   type="submit"
-                  className="absolute right-1.5 top-1.5 flex h-8 w-8 items-center justify-center rounded-lg bg-[#10a37f] text-white hover:bg-[#0fa47f] transition-all cursor-pointer"
+                  className="absolute right-1.5 top-1.5 flex h-8 w-8 items-center justify-center rounded-lg bg-[#f2b305] text-black hover:opacity-90 font-bold transition-all cursor-pointer"
                   id="btn-newsletter-submit"
                 >
                   <Send className="h-4 w-4" />
                 </button>
               </div>
               {subscribed && (
-                <p className="text-emerald-400 text-xs font-medium animate-pulse mt-1">
+                <p className="text-[#30D158] text-xs font-medium animate-pulse mt-1">
                   Thank you! You've subscribed successfully. ✨
                 </p>
               )}
@@ -145,7 +175,7 @@ export default function Footer() {
 
         {/* Bottom bar */}
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between text-xs text-gray-500">
-          <p>© {new Date().getFullYear()} BharatTalk. All rights reserved.</p>
+          <p>© {new Date().getFullYear()} Swiply. All rights reserved.</p>
           <div className="flex flex-wrap gap-x-6 gap-y-2">
             <a href="#privacy" className="hover:text-gray-300 transition-colors">Privacy Policy</a>
             <a href="#terms" className="hover:text-gray-300 transition-colors">Terms of Service</a>

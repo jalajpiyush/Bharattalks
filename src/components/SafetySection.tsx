@@ -9,34 +9,28 @@ import { ShieldCheck, HeartHandshake, EyeOff, AlertOctagon, UserCheck, CheckCirc
 export default function SafetySection() {
   const safetyPoints = [
     {
-      title: "AI-Powered Moderation",
-      description: "Our machine learning filters run 24/7 to scan live streams and instantly flag or ban toxic behavior.",
+      title: "Automated Frame Classification",
+      description: "Our client-side WebGL framework scans video frames locally every 3 seconds, blurring inappropriate content immediately before any packets leave your browser.",
       icon: ShieldCheck,
-      color: "text-[#10a37f]"
+      color: "text-[#4F8FFF]"
     },
     {
-      title: "User Reporting System",
-      description: "Simple, immediate 1-tap report/block button in video sessions directly alerts our admin queue.",
+      title: "Decentralized Peer Reporting",
+      description: "Immediate 1-tap report buttons trigger localized cooldowns. Accounts receiving 2+ flags in 10 minutes are locked pending human inspection.",
       icon: AlertOctagon,
       color: "text-red-400"
     },
     {
-      title: "Community Guidelines",
-      description: "Strict code of conduct enforces friendly, authentic, and mutually respectful interactions.",
+      title: "Real-time Text Filter Engine",
+      description: "A server-side regex and keyword check parses text chats to block link sharing, phone numbers, or toxic phrases in less than 50 milliseconds.",
       icon: HeartHandshake,
-      color: "text-teal-400"
+      color: "text-[#6AA8FF]"
     },
     {
-      title: "Privacy Protection",
-      description: "Your camera and mic feeds are fully secure. We never track or store private call audio or video.",
+      title: "Data and Privacy Isolation",
+      description: "Sign-in parameters are used exclusively for credential check. Peer connections run on secure peer-to-peer tunnels without storing call archives.",
       icon: EyeOff,
-      color: "text-emerald-400"
-    },
-    {
-      title: "Account Verification",
-      description: "Social OAuth login protocols protect against bots, spam networks, and fake automated accounts.",
-      icon: UserCheck,
-      color: "text-gray-400"
+      color: "text-[#30D158]"
     }
   ];
 
@@ -46,19 +40,19 @@ export default function SafetySection() {
         
         {/* Left Column: List details */}
         <div className="lg:col-span-7 space-y-6">
-          <span className="inline-block text-xs font-bold uppercase tracking-widest text-[#10a37f] bg-[#10a37f]/10 rounded-full px-4 py-1.5">
+          <span className="inline-block text-xs font-bold uppercase tracking-widest text-[#4F8FFF] bg-[#4F8FFF]/10 rounded-full px-4 py-1.5">
             Safety First
           </span>
 
           <h2 className="text-3xl md:text-5xl font-bold font-display tracking-tight text-white leading-tight">
             Your Safety is <br className="hidden md:inline" />
-            <span className="bg-gradient-to-r from-[#10a37f] via-emerald-400 to-teal-500 bg-clip-text text-transparent">
+            <span className="bg-gradient-to-r from-[#4F8FFF] to-[#7CB8FF] bg-clip-text text-transparent">
               Our Priority
             </span>
           </h2>
 
           <p className="text-gray-300 text-sm md:text-base leading-relaxed">
-            We are dedicated to building a positive, healthy environment. BharatTalk leverages bleeding-edge automated technologies combined with human monitoring to keep malicious activities out, letting you enjoy stress-free, delightful connections.
+            We are dedicated to building a positive, healthy environment. Swiply leverages bleeding-edge automated technologies combined with human monitoring to keep malicious activities out, letting you enjoy stress-free, delightful connections.
           </p>
 
           <div className="space-y-4 pt-2">
@@ -91,6 +85,37 @@ export default function SafetySection() {
               );
             })}
           </div>
+
+          {/* Technical Transparency Specification block */}
+          <motion.div
+            initial={{ opacity: 0, y: 15 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.5, delay: 0.2 }}
+            className="p-5 rounded-2xl bg-gradient-to-br from-[#121826]/30 via-[#121826]/50 to-[#090D16] border border-[#4F8FFF]/10 space-y-3.5"
+          >
+            <div className="flex items-center gap-2 text-[#4F8FFF]">
+              <span className="w-2 h-2 rounded-full bg-[#4F8FFF] animate-pulse" />
+              <h3 className="text-xs font-bold uppercase tracking-wider font-mono">System Integrity & Transparency Log</h3>
+            </div>
+            <p className="text-xs text-gray-400 leading-relaxed">
+              We stand against ambiguous safety marketing. Our platform enforces high-integrity moderation through standard deterministic rules:
+            </p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-3xs font-mono text-gray-500 leading-normal uppercase">
+              <div className="bg-white/2.5 p-2.5 rounded-xl border border-white/5">
+                <span className="text-[#4F8FFF] font-black">01 // VIDEO STREAM INTEGRITY</span>
+                <p className="text-[10px] lowercase text-gray-400 mt-1 leading-relaxed">
+                  Real-time client-side frame analyzer checks raw media buffers locally. Detected NSFW flags instantly terminate WebRTC signaling channels.
+                </p>
+              </div>
+              <div className="bg-white/2.5 p-2.5 rounded-xl border border-white/5">
+                <span className="text-[#6AA8FF] font-black">02 // ANTI-BOT SYNC GATEWAY</span>
+                <p className="text-[10px] lowercase text-gray-400 mt-1 leading-relaxed">
+                  Verification triggers standard token lookups. Multi-device verification prevents automated farming and keeps matching pools 100% genuine.
+                </p>
+              </div>
+            </div>
+          </motion.div>
         </div>
 
         {/* Right Column: Custom Glassmorphism 3D Lock/Shield Illustration */}
@@ -100,8 +125,8 @@ export default function SafetySection() {
           <div className="relative w-80 h-96 md:w-96 md:h-[450px] rounded-3xl glass-panel border border-white/10 flex flex-col items-center justify-center shadow-2xl overflow-hidden group">
             
             {/* Background glowing rings */}
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-[#10a37f]/10 rounded-full blur-3xl group-hover:bg-[#10a37f]/15 transition-all duration-700" />
-            <div className="absolute -top-10 -left-10 w-40 h-40 bg-[#10a37f]/5 rounded-full blur-2xl" />
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-[#4F8FFF]/10 rounded-full blur-3xl group-hover:bg-[#4F8FFF]/15 transition-all duration-700" />
+            <div className="absolute -top-10 -left-10 w-40 h-40 bg-[#4F8FFF]/5 rounded-full blur-2xl" />
 
             {/* Glowing lock/shield vector ornament */}
             <motion.div
@@ -121,7 +146,7 @@ export default function SafetySection() {
               {/* Outer shield outline (SVG for sharp look) */}
               <svg 
                 viewBox="0 0 200 240" 
-                className="absolute inset-0 w-full h-full text-[#10a37f]/20 drop-shadow-[0_0_35px_rgba(16,163,127,0.3)]"
+                className="absolute inset-0 w-full h-full text-[#4F8FFF]/20 drop-shadow-[0_0_35px_rgba(79,143,255,0.3)]"
               >
                 <path 
                   d="M100 20 C140 20 180 30 180 70 C180 140 130 200 100 220 C70 200 20 140 20 70 C20 30 60 20 100 20 Z" 
@@ -131,8 +156,8 @@ export default function SafetySection() {
                 />
                 <defs>
                   <linearGradient id="shieldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                    <stop offset="0%" stopColor="#10a37f" stopOpacity="0.15" />
-                    <stop offset="100%" stopColor="#0fa47f" stopOpacity="0.35" />
+                    <stop offset="0%" stopColor="#4F8FFF" stopOpacity="0.15" />
+                    <stop offset="100%" stopColor="#6AA8FF" stopOpacity="0.35" />
                   </linearGradient>
                 </defs>
               </svg>
@@ -144,7 +169,7 @@ export default function SafetySection() {
                 <div className="w-16 h-20 border-4 border-b-0 border-white/40 rounded-t-full relative translate-y-3 shadow-inner" />
                 
                 {/* Padlock body (glowing frosted rectangle) */}
-                <div className="w-24 h-24 rounded-2xl bg-gradient-to-tr from-[#0d0d0d]/90 via-[#212121] to-[#10a37f]/80 border border-white/20 flex items-center justify-center shadow-2xl relative">
+                <div className="w-24 h-24 rounded-2xl bg-gradient-to-tr from-[#090D16]/90 via-[#121826] to-[#4F8FFF]/80 border border-white/20 flex items-center justify-center shadow-2xl relative">
                   
                   {/* Glowing keyhole icon */}
                   <div className="flex flex-col items-center gap-1">
@@ -158,13 +183,13 @@ export default function SafetySection() {
               </div>
 
               {/* Floating Shield Badges */}
-              <div className="absolute top-8 right-6 bg-emerald-500/10 backdrop-blur-md border border-[#10a37f]/20 rounded-xl px-2.5 py-1 flex items-center gap-1.5 shadow-lg">
-                <span className="w-1.5 h-1.5 rounded-full bg-[#10a37f] animate-ping" />
-                <span className="text-[10px] font-bold text-emerald-300">SECURE</span>
+              <div className="absolute top-8 right-6 bg-[#4F8FFF]/10 backdrop-blur-md border border-[#4F8FFF]/20 rounded-xl px-2.5 py-1 flex items-center gap-1.5 shadow-lg">
+                <span className="w-1.5 h-1.5 rounded-full bg-[#30D158] animate-ping" />
+                <span className="text-[10px] font-bold text-[#30D158]">SECURE</span>
               </div>
 
-              <div className="absolute bottom-10 left-2 bg-[#10a37f]/10 backdrop-blur-md border border-[#10a37f]/20 rounded-xl px-2.5 py-1 flex items-center gap-1.5 shadow-lg">
-                <span className="text-[10px] font-bold text-[#10a37f]">AI MODERATED</span>
+              <div className="absolute bottom-10 left-2 bg-[#4F8FFF]/10 backdrop-blur-md border border-[#4F8FFF]/20 rounded-xl px-2.5 py-1 flex items-center gap-1.5 shadow-lg">
+                <span className="text-[10px] font-bold text-[#4F8FFF]">AI MODERATED</span>
               </div>
             </motion.div>
 
