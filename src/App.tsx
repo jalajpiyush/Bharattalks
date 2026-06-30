@@ -6,6 +6,7 @@
 import { useState, useEffect, FormEvent } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import Header from "./components/Header";
+import PremiumModal from "./components/PremiumModal";
 import Footer from "./components/Footer";
 import Hero from "./components/Hero";
 import Statistics from "./components/Statistics";
@@ -15,8 +16,7 @@ import SafetySection from "./components/SafetySection";
 import FaqSection from "./components/FaqSection";
 import VideoChatArea from "./components/VideoChatArea";
 import { Mail, CheckCircle2, Lock, Sparkles, X, Chrome, Smartphone, Compass, ArrowLeft, Phone, ArrowRight, ShieldCheck, ExternalLink, Video } from "lucide-react";
-import { saveUserProfile, getUserProfile, auth } from "./lib/firebase";
-import { signInWithPopup, GoogleAuthProvider } from "firebase/auth";
+import { saveUserProfile, getUserProfile, savePaymentRecord, updateUserOnlineStatus, signInWithGoogle, signOutUser, awsSocket } from "./lib/aws";
 
 interface UserProfile {
   email: string;
@@ -74,7 +74,144 @@ export default function App() {
   const [otpSent, setOtpSent] = useState(false);
   const [profileSetupStep, setProfileSetupStep] = useState(false);
 
-  // Load existing session on startup and sync with Firestore
+  const [onlineCount, setOnlineCount] = useState<number>(0);
+  const [premiumModalOpen, setPremiumModalOpen] = useState(false);
+  const [payuStatus, setPayuStatus] = useState<{ status: string, msg?: string } | null>(null);
+
+  useEffect(() => {
+    if (!user || !user.email) return;
+
+    // Set online immediately
+    updateUserOnlineStatus(user.email, true);
+
+    // Heartbeat every 30 seconds
+    const heartbeat = setInterval(() => {
+      updateUserOnlineStatus(user.email, true);
+    }, 30000);
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "hidden") {
+        updateUserOnlineStatus(user.email, false);
+      } else {
+        updateUserOnlineStatus(user.email, true);
+      }
+    };
+
+    const handleBeforeUnload = () => {
+      updateUserOnlineStatus(user.email, false);
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    window.addEventListener("beforeunload", handleBeforeUnload);
+
+    return () => {
+      clearInterval(heartbeat);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+    };
+  }, [user]);
+
+  useEffect(() => {
+    // Check URL query parameters for PayU redirect callback indicators on mount
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const paymentStatus = params.get("payment");
+      const errStatus = params.get("status");
+
+      if (paymentStatus === "success") {
+        const email = params.get("email") || "";
+        const firstname = params.get("firstname") || "";
+        const amount = params.get("amount") || "";
+        const plan = params.get("plan") || "monthly";
+        const txnid = params.get("txnid");
+
+        localStorage.setItem("swiply_premium", "true");
+        localStorage.setItem("bharattalk_premium", "true");
+        localStorage.setItem("monkey_premium", "true");
+        window.dispatchEvent(new CustomEvent("premium-updated"));
+        setPayuStatus({ status: "success" });
+        setPremiumModalOpen(true);
+
+        if (email) {
+          savePaymentRecord({
+            txnid: txnid || `tx_${Date.now()}`,
+            amount: amount || (plan === "yearly" ? "1999" : "299"),
+            email: email,
+            firstname: firstname,
+            plan: plan
+          }).catch(console.error);
+        }
+        
+        const cleanUrl = window.location.pathname;
+        window.history.replaceState({}, document.title, cleanUrl + (params.get("view") ? `?view=${params.get("view")}` : ""));
+      } else if (paymentStatus === "failure") {
+        const errorMsg = params.get("error_message");
+        const errorCode = params.get("error_code");
+        let displayMsg = `Transaction was not successful (Status: ${errStatus || "Failed"}).`;
+        if (errorMsg) {
+          displayMsg = `${errorMsg}${errorCode ? ` (Code: ${errorCode})` : ""}`;
+        }
+        setPayuStatus({ status: "failure", msg: displayMsg });
+        setPremiumModalOpen(true);
+        
+        const cleanUrl = window.location.pathname;
+        window.history.replaceState({}, document.title, cleanUrl + (params.get("view") ? `?view=${params.get("view")}` : ""));
+      } else if (paymentStatus === "error") {
+        setPayuStatus({ status: "error", msg: "An error occurred during payment verification. Please try again." });
+        setPremiumModalOpen(true);
+        
+        const cleanUrl = window.location.pathname;
+        window.history.replaceState({}, document.title, cleanUrl + (params.get("view") ? `?view=${params.get("view")}` : ""));
+      }
+    }
+
+    const handleOpenPremiumEvent = () => {
+      const savedUser = localStorage.getItem("swiply_user") || localStorage.getItem("monkey_user") || localStorage.getItem("bharattalk_user");
+      if (savedUser) {
+        setPremiumModalOpen(true);
+      } else {
+        setAuthOpen(true);
+      }
+    };
+    window.addEventListener("open-premium-modal", handleOpenPremiumEvent);
+    return () => window.removeEventListener("open-premium-modal", handleOpenPremiumEvent);
+  }, []);
+
+  const handleOpenPremium = () => {
+    if (user) {
+      setPremiumModalOpen(true);
+    } else {
+      setAuthOpen(true);
+      setSuccess(false);
+      setLoading(false);
+      setOtpSent(false);
+      setProfileSetupStep(false);
+    }
+  };
+
+  const handleStartChatting = () => {
+    if (!user) {
+      handleOpenAuth();
+    } else {
+      window.open("/?view=chat", "_blank");
+    }
+  };
+
+  useEffect(() => {
+    let unsubscribe: () => void;
+    import("./lib/aws").then(({ subscribeToOnlineUsersCount }) => {
+      unsubscribe = subscribeToOnlineUsersCount((count) => {
+        setOnlineCount(count);
+      });
+    });
+    return () => {
+      if (unsubscribe) {
+        unsubscribe();
+      }
+    };
+  }, []);
+
+  // Load existing session on startup and sync with DynamoDB
   useEffect(() => {
     const savedUser = localStorage.getItem("swiply_user") || localStorage.getItem("monkey_user") || localStorage.getItem("bharattalk_user");
     if (savedUser) {
@@ -82,11 +219,11 @@ export default function App() {
         const parsed = JSON.parse(savedUser);
         setUser(parsed);
 
-        // Fetch fresh state from Firestore
+        // Fetch fresh state from DynamoDB
         if (parsed.email) {
           getUserProfile(parsed.email).then((cloudProfile) => {
             if (cloudProfile) {
-              console.log("Firebase: Synced user profile from Firestore:", cloudProfile);
+              console.log("AWS: Synced user profile from DynamoDB:", cloudProfile);
               if (cloudProfile.isPremium) {
                 localStorage.setItem("swiply_premium", "true");
                 localStorage.setItem("monkey_premium", "true");
@@ -107,7 +244,7 @@ export default function App() {
               localStorage.setItem("monkey_user", JSON.stringify(updatedLocal));
             }
           }).catch((err) => {
-            console.error("Firebase: Error syncing user on mount:", err);
+            console.error("AWS: Error syncing user on mount:", err);
           });
         }
       } catch (e) {
@@ -117,34 +254,23 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    if (currentView === "chat" && !isStandalone) {
-      setView("home");
-      try {
-        const newWindow = window.open("/?view=chat&standalone=true", "_blank");
-        if (!newWindow || newWindow.closed || typeof newWindow.closed === "undefined") {
-          console.warn("Swiply: Tab redirect was blocked by the browser pop-up blocker.");
-        }
-      } catch (err) {
-        console.error("Swiply: Failed to auto-open separate tab:", err);
-      }
-    }
+    // We no longer force a popup redirect for the chat view.
+    // The chat will render directly in the main window.
   }, [currentView, isStandalone]);
 
   const handleGoogleSignIn = async () => {
     setLoading(true);
     setAuthError("");
     try {
-      const provider = new GoogleAuthProvider();
-      provider.setCustomParameters({ prompt: 'select_account' });
-      const result = await signInWithPopup(auth, provider);
-      const firebaseUser = result.user;
+      const result = await signInWithGoogle();
+      const awsUser = result.user;
       
-      if (!firebaseUser.email) {
+      if (!awsUser.email) {
         throw new Error("No email address returned from your Google account.");
       }
       
-      const email = firebaseUser.email;
-      const displayName = firebaseUser.displayName || email.split("@")[0];
+      const email = awsUser.email;
+      const displayName = awsUser.displayName || email.split("@")[0];
       
       const existingUser = await getUserProfile(email);
       setLoading(false);
@@ -180,7 +306,7 @@ export default function App() {
         setProfileSetupStep(true);
       }
     } catch (err: any) {
-      console.error("Firebase: Google auth failed:", err);
+      console.error("AWS Auth: Google sign-in failed:", err);
       setLoading(false);
       if (err.code === "auth/popup-blocked") {
         setAuthError("Sign-in popup was blocked by your browser. Please allow popups or open Swiply in a new standalone window.");
@@ -196,44 +322,8 @@ export default function App() {
     setLoading(true);
     setAuthError("");
     setTimeout(() => {
-      const dummyEmail = "jalajshakya951@icloud.com";
-      const dummyName = "Jalaj Shakya";
-      getUserProfile(dummyEmail).then((existingUser) => {
-        setLoading(false);
-        if (existingUser) {
-          setSuccess(true);
-          setTimeout(() => {
-            const loggedInUser: UserProfile = {
-              email: existingUser.email,
-              name: existingUser.name,
-              country: existingUser.country,
-              avatar: existingUser.avatar
-            };
-            setUser(loggedInUser);
-            localStorage.setItem("monkey_user", JSON.stringify(loggedInUser));
-            localStorage.setItem("swiply_user", JSON.stringify(loggedInUser));
-            localStorage.setItem("bharattalk_user", JSON.stringify(loggedInUser));
-            if (existingUser.isPremium) {
-              localStorage.setItem("monkey_premium", "true");
-              localStorage.setItem("swiply_premium", "true");
-              localStorage.setItem("bharattalk_premium", "true");
-            }
-            setAuthOpen(false);
-            setAuthMethod(null);
-            setEmailForm("");
-            setNameForm("");
-            setPasswordForm("");
-            setSuccess(false);
-          }, 1000);
-        } else {
-          setEmailForm(dummyEmail);
-          setNameForm(dummyName);
-          setProfileSetupStep(true);
-        }
-      }).catch((err) => {
-        setLoading(false);
-        setAuthError("Apple sign-in simulation failed.");
-      });
+      setLoading(false);
+      setAuthError("Apple Sign-In is not currently configured in AWS Cognito.");
     }, 1000);
   };
 
@@ -263,6 +353,9 @@ export default function App() {
   };
 
   const handleSignOut = () => {
+    if (user && user.email) {
+      updateUserOnlineStatus(user.email, false);
+    }
     localStorage.removeItem("monkey_user");
     localStorage.removeItem("swiply_user");
     localStorage.removeItem("bharattalk_user");
@@ -298,7 +391,7 @@ export default function App() {
     setTimeout(() => {
       setLoading(false);
       setOtpSent(true);
-      console.log(`Firebase Phone Auth: OTP sent to ${countryCode} ${phoneForm}`);
+      console.log(`AWS Phone Auth: OTP sent to ${countryCode} ${phoneForm}`);
     }, 1200);
   };
 
@@ -345,7 +438,7 @@ export default function App() {
         setProfileSetupStep(true);
       }
     } catch (err) {
-      console.error("Firebase phone auth lookup failed:", err);
+      console.error("AWS phone auth lookup failed:", err);
       setLoading(false);
       setEmailForm(generatedEmail);
       setNameForm(generatedName);
@@ -451,8 +544,8 @@ export default function App() {
     const targetName = nameForm || emailForm.split("@")[0] || "Swiply member";
 
     try {
-      // 1. Fetch existing user profile from Firestore to see if they already have VIP/Premium or customized profile
-      console.log(`Firebase: Checking for existing profile for: ${targetEmail}`);
+      // 1. Fetch existing user profile from DynamoDB to see if they already have VIP/Premium or customized profile
+      console.log(`AWS: Checking for existing profile for: ${targetEmail}`);
       const existing = await getUserProfile(targetEmail);
       
       let isPremiumUser = false;
@@ -461,14 +554,14 @@ export default function App() {
       let finalName = nameForm || targetName;
 
       if (existing) {
-        console.log(`Firebase: Found existing user profile! Premium: ${existing.isPremium}`);
+        console.log(`AWS: Found existing user profile! Premium: ${existing.isPremium}`);
         isPremiumUser = !!existing.isPremium;
         if (!finalAvatar && existing.avatar) finalAvatar = existing.avatar;
         if (!finalCountry && existing.country) finalCountry = existing.country;
         if (!finalName && existing.name) finalName = existing.name;
       }
 
-      // 2. Save/Update user profile in Firestore
+      // 2. Save/Update user profile in DynamoDB
       const profileToSave = {
         email: targetEmail,
         name: finalName,
@@ -518,7 +611,7 @@ export default function App() {
       }, 1000);
 
     } catch (err) {
-      console.error("Firebase: Auth submit failed:", err);
+      console.error("AWS: Auth submit failed:", err);
       // Fallback gracefully to offline simulation if network is blocked/missing
       setLoading(false);
       setSuccess(true);
@@ -550,6 +643,8 @@ export default function App() {
   return (
     <div className="min-h-screen flex flex-col bg-gradient-to-b from-[#5c4cf4] via-[#4d3de0] to-[#5c4cf4] text-[#ececec] overflow-x-hidden relative font-sans">
       
+      <PremiumModal isOpen={premiumModalOpen} onClose={() => setPremiumModalOpen(false)} payuStatus={payuStatus} />
+
       {/* Repeating background watermarks - exactly like the Swiply App watermark background */}
       <div className="absolute inset-x-0 top-0 bottom-[400px] pointer-events-none overflow-hidden -z-10 opacity-[0.06] grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-y-16 gap-x-12 p-8 select-none">
         {Array.from({ length: 48 }).map((_, i) => (
@@ -606,6 +701,15 @@ export default function App() {
             <span className="text-[9px] bg-[#4F8FFF]/20 text-[#4F8FFF] border border-[#4F8FFF]/20 font-bold px-2 py-0.5 rounded-full uppercase tracking-wider">
               Immersive Mode
             </span>
+            
+            {/* Real-time online user count indicator in Immersive Mode */}
+            <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-extrabold select-none">
+              <span className="relative flex h-1.5 w-1.5">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500"></span>
+              </span>
+              <span>{onlineCount} Online</span>
+            </div>
           </div>
 
           <div className="flex items-center gap-4">
@@ -639,6 +743,7 @@ export default function App() {
           onOpenAuth={() => handleOpenAuth()}
           user={user}
           onSignOut={handleSignOut}
+          onOpenPremium={handleOpenPremium}
         />
       )}
 
@@ -657,20 +762,20 @@ export default function App() {
             {currentView === "home" && (
               <div className="space-y-6">
                 <Hero
-                  onStartChatting={() => setView("chat")}
+                  onStartChatting={handleStartChatting}
                   onOpenAuth={handleOpenAuth}
                   user={user}
                 />
                 <Statistics />
                 <Features />
-                <AboutSection onStartChatting={() => setView("chat")} />
+                <AboutSection onStartChatting={handleStartChatting} />
                 <SafetySection />
                 <FaqSection />
               </div>
             )}
 
             {/* 2. VIDEO CHAT VIEW */}
-            {currentView === "chat" && (
+            {currentView === "chat" && user && (
               <div className="py-6 space-y-4">
                 <div className="text-center mb-4">
                   <span className="inline-block text-xs font-bold uppercase tracking-widest text-[#4F8FFF] bg-[#4F8FFF]/10 rounded-full px-4 py-1.5 mb-2">
@@ -681,6 +786,21 @@ export default function App() {
                   </h2>
                 </div>
                 <VideoChatArea />
+              </div>
+            )}
+            
+            {currentView === "chat" && !user && (
+              <div className="py-20 space-y-4 text-center">
+                <h2 className="text-2xl md:text-4xl font-bold font-display tracking-tight text-white">
+                  Login Required
+                </h2>
+                <p className="text-gray-400">You must be logged in to access Video Chat.</p>
+                <button
+                  onClick={handleOpenAuth}
+                  className="bg-[#4F8FFF] text-white px-8 py-3 rounded-xl font-bold mt-4"
+                >
+                  Login / Sign Up
+                </button>
               </div>
             )}
 
@@ -695,7 +815,7 @@ export default function App() {
             {/* 4. ABOUT VIEW */}
             {currentView === "about" && (
               <div className="py-6 space-y-8">
-                <AboutSection onStartChatting={() => setView("chat")} />
+                <AboutSection onStartChatting={handleStartChatting} />
                 <Statistics />
               </div>
             )}
@@ -705,7 +825,7 @@ export default function App() {
       </main>
 
       {/* Footer */}
-      {!isStandalone && <Footer />}
+      {!isStandalone && currentView !== "chat" && <Footer />}
 
       {/* Authentication & Profile Creation Dialog Modal */}
       <AnimatePresence>
@@ -886,14 +1006,14 @@ export default function App() {
                                 placeholder="98765 43210"
                                 value={phoneForm}
                                 onChange={(e) => setPhoneForm(e.target.value.replace(/[^0-9]/g, ""))}
-                                className="flex-1 rounded-xl bg-white/5 border border-white/10 px-4 py-3 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-[#f2b305] transition-all"
+                                className="flex-1 rounded-xl bg-white/5 border border-white/10 px-4 py-3 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-[#4F8FFF] transition-all"
                               />
                             </div>
                           </div>
 
                           <button
                             type="submit"
-                            className="w-full flex items-center justify-center gap-2 rounded-xl bg-[#f2b305] hover:bg-[#d99e04] text-black font-extrabold py-3.5 transition-all hover:scale-[1.01] cursor-pointer shadow-lg shadow-[#f2b305]/15"
+                            className="w-full flex items-center justify-center gap-2 rounded-xl bg-[#4F8FFF] hover:bg-[#2A5CBF] text-black font-extrabold py-3.5 transition-all hover:scale-[1.01] cursor-pointer shadow-lg shadow-[#4F8FFF]/15"
                           >
                             Send OTP Code
                             <ArrowRight className="h-4 w-4" />
@@ -902,7 +1022,7 @@ export default function App() {
                       ) : (
                         <form onSubmit={handleVerifyOtp} className="space-y-6">
                            <div className="space-y-1.5">
-                            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#f2b305]/10 text-[#f2b305] mb-3 animate-pulse">
+                            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#4F8FFF]/10 text-[#4F8FFF] mb-3 animate-pulse">
                               <ShieldCheck className="h-5 w-5" />
                             </div>
                             <h3 className="text-xl font-bold font-display text-white">Enter 6-Digit OTP</h3>
@@ -917,13 +1037,13 @@ export default function App() {
                               placeholder="123456"
                               value={otpForm}
                               onChange={(e) => setOtpForm(e.target.value.replace(/[^0-9]/g, ""))}
-                              className="w-full rounded-xl bg-white/5 border border-white/10 px-4 py-3.5 text-center text-lg tracking-widest font-mono text-white placeholder-gray-600 focus:outline-none focus:border-[#f2b305] transition-all"
+                              className="w-full rounded-xl bg-white/5 border border-white/10 px-4 py-3.5 text-center text-lg tracking-widest font-mono text-white placeholder-gray-600 focus:outline-none focus:border-[#4F8FFF] transition-all"
                             />
                             <div className="text-center">
                               <button
                                 type="button"
                                 onClick={() => { setOtpForm(""); setOtpSent(false); }}
-                                className="text-xs text-[#f2b305] hover:underline"
+                                className="text-xs text-[#4F8FFF] hover:underline"
                               >
                                 Edit phone number or Resend OTP
                               </button>
@@ -932,7 +1052,7 @@ export default function App() {
 
                           <button
                             type="submit"
-                            className="w-full flex items-center justify-center gap-2 rounded-xl bg-[#f2b305] hover:bg-[#d99e04] text-black font-extrabold py-3.5 transition-all cursor-pointer shadow-lg shadow-[#f2b305]/15"
+                            className="w-full flex items-center justify-center gap-2 rounded-xl bg-[#4F8FFF] hover:bg-[#2A5CBF] text-black font-extrabold py-3.5 transition-all cursor-pointer shadow-lg shadow-[#4F8FFF]/15"
                           >
                             Verify & Continue
                           </button>
@@ -970,7 +1090,7 @@ export default function App() {
                           }}
                           className={`flex-1 py-2 text-xs font-bold rounded-md transition-all cursor-pointer ${
                             emailAuthMode === "signin"
-                              ? "bg-[#f2b305] text-black shadow-sm"
+                              ? "bg-[#4F8FFF] text-black shadow-sm"
                               : "text-gray-400 hover:text-white"
                           }`}
                         >
@@ -984,7 +1104,7 @@ export default function App() {
                           }}
                           className={`flex-1 py-2 text-xs font-bold rounded-md transition-all cursor-pointer ${
                             emailAuthMode === "signup"
-                              ? "bg-[#f2b305] text-black shadow-sm"
+                              ? "bg-[#4F8FFF] text-black shadow-sm"
                               : "text-gray-400 hover:text-white"
                           }`}
                         >
@@ -1011,7 +1131,7 @@ export default function App() {
                               placeholder="e.g., CyberRider"
                               value={nameForm}
                               onChange={(e) => setNameForm(e.target.value)}
-                              className="w-full rounded-xl bg-white/5 border border-white/10 px-4 py-3 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-[#f2b305] transition-all"
+                              className="w-full rounded-xl bg-white/5 border border-white/10 px-4 py-3 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-[#4F8FFF] transition-all"
                               id="auth-input-name"
                             />
                           </div>
@@ -1029,7 +1149,7 @@ export default function App() {
                               placeholder="e.g., rider@domain.com"
                               value={emailForm}
                               onChange={(e) => setEmailForm(e.target.value)}
-                              className="w-full rounded-xl bg-white/5 border border-white/10 pl-11 pr-4 py-3 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-[#f2b305] transition-all"
+                              className="w-full rounded-xl bg-white/5 border border-white/10 pl-11 pr-4 py-3 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-[#4F8FFF] transition-all"
                               id="auth-input-email"
                             />
                             <Mail className="absolute left-4 top-3.5 h-4 w-4 text-gray-500" />
@@ -1048,7 +1168,7 @@ export default function App() {
                               placeholder="••••••••"
                               value={passwordForm}
                               onChange={(e) => setPasswordForm(e.target.value)}
-                              className="w-full rounded-xl bg-white/5 border border-white/10 pl-11 pr-4 py-3 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-[#f2b305] transition-all"
+                              className="w-full rounded-xl bg-white/5 border border-white/10 pl-11 pr-4 py-3 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-[#4F8FFF] transition-all"
                               id="auth-input-password"
                             />
                             <Lock className="absolute left-4 top-3.5 h-4 w-4 text-gray-500" />
@@ -1062,7 +1182,7 @@ export default function App() {
                       <button
                         type="submit"
                         disabled={loading}
-                        className="w-full flex items-center justify-center gap-2 rounded-xl bg-[#f2b305] hover:bg-[#d99e04] text-black font-extrabold py-3.5 transition-all hover:scale-[1.01] cursor-pointer disabled:opacity-40 shadow-lg shadow-[#f2b305]/15"
+                        className="w-full flex items-center justify-center gap-2 rounded-xl bg-[#4F8FFF] hover:bg-[#2A5CBF] text-black font-extrabold py-3.5 transition-all hover:scale-[1.01] cursor-pointer disabled:opacity-40 shadow-lg shadow-[#4F8FFF]/15"
                       >
                         {loading ? (
                           <div className="h-5 w-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
@@ -1110,7 +1230,7 @@ export default function App() {
                             placeholder="Display Name"
                             value={nameForm}
                             onChange={(e) => setNameForm(e.target.value)}
-                            className="w-full rounded-xl bg-white/5 border border-white/10 px-4 py-3 text-sm text-white focus:outline-none focus:border-[#f2b305] transition-all"
+                            className="w-full rounded-xl bg-white/5 border border-white/10 px-4 py-3 text-sm text-white focus:outline-none focus:border-[#4F8FFF] transition-all"
                           />
                         </div>
 
@@ -1123,7 +1243,7 @@ export default function App() {
                             <select
                               value={countryForm}
                               onChange={(e) => setCountryForm(e.target.value)}
-                              className="w-full rounded-xl bg-white/5 border border-white/10 pl-11 pr-4 py-3 text-sm text-white appearance-none focus:outline-none focus:border-[#f2b305] transition-all cursor-pointer"
+                              className="w-full rounded-xl bg-white/5 border border-white/10 pl-11 pr-4 py-3 text-sm text-white appearance-none focus:outline-none focus:border-[#4F8FFF] transition-all cursor-pointer"
                               id="auth-select-country"
                             >
                               <option value="India" className="bg-[#212121] text-white">🇮🇳 India</option>
@@ -1149,7 +1269,7 @@ export default function App() {
                                 onClick={() => setSelectedAvatar(avatar.icon)}
                                 className={`flex h-12 w-12 items-center justify-center rounded-xl border text-xl transition-all cursor-pointer ${
                                   selectedAvatar === avatar.icon
-                                    ? "bg-[#f2b305] border-transparent scale-110 shadow-lg text-black"
+                                    ? "bg-[#4F8FFF] border-transparent scale-110 shadow-lg text-black"
                                       : "bg-white/5 border-white/5 text-gray-400 hover:bg-white/10"
                                 }`}
                               >
@@ -1165,7 +1285,7 @@ export default function App() {
                         <button
                           type="submit"
                           disabled={loading}
-                          className="w-full flex items-center justify-center gap-2 rounded-xl bg-[#f2b305] hover:bg-[#d99e04] text-black font-extrabold py-3.5 shadow-xl shadow-[#f2b305]/20 transition-all hover:scale-[1.01] cursor-pointer disabled:opacity-50"
+                          className="w-full flex items-center justify-center gap-2 rounded-xl bg-[#4F8FFF] hover:bg-[#2A5CBF] text-black font-extrabold py-3.5 shadow-xl shadow-[#4F8FFF]/20 transition-all hover:scale-[1.01] cursor-pointer disabled:opacity-50"
                           id="btn-auth-submit"
                         >
                           {loading ? (
@@ -1193,7 +1313,7 @@ export default function App() {
                       Welcome, <span className="text-white font-bold">{nameForm || "Swiply member"}</span>! Your profile is securely synced.
                     </p>
                   </div>
-                  <div className="text-[#f2b305] text-sm font-bold uppercase tracking-widest animate-pulse">
+                  <div className="text-[#4F8FFF] text-sm font-bold uppercase tracking-widest animate-pulse">
                     Launching video gateway...
                   </div>
                 </div>

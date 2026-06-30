@@ -20,12 +20,12 @@ export default function Footer() {
   };
 
   return (
-    <footer className="w-full bg-[#090D16] border-t border-white/5 px-4 py-12 md:px-12">
+    <footer className="w-full bg-black/20 backdrop-blur-md border-t border-white/5 px-4 py-12 md:px-12">
       <div className="mx-auto max-w-7xl">
-        <div className="grid grid-cols-1 gap-10 md:grid-cols-4 lg:grid-cols-5">
+        <div className="grid grid-cols-1 gap-10 md:grid-cols-2 lg:grid-cols-6">
           
           {/* Logo & Info column */}
-          <div className="md:col-span-1 lg:col-span-2">
+          <div className="md:col-span-2 lg:col-span-2">
             <div className="flex items-center gap-2.5 text-xl font-bold font-display text-white mb-4">
               <div className="relative flex h-11 w-11 items-center justify-center rounded-2xl bg-white/15 shadow-xl border border-white/20 overflow-hidden group">
                 <div className="absolute inset-0 bg-gradient-to-b from-white/15 to-transparent pointer-events-none" />
@@ -33,15 +33,15 @@ export default function Footer() {
                 {/* Cute Swiply Mascot SVG - Authentic Yellow */}
                 <svg className="h-8 w-8 drop-shadow-md" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
                   {/* Left Ear */}
-                  <circle cx="24" cy="50" r="11" fill="#f2b305" />
-                  <circle cx="24" cy="50" r="7" fill="#b88100" />
+                  <circle cx="24" cy="50" r="11" fill="#4F8FFF" />
+                  <circle cx="24" cy="50" r="7" fill="#2A5CBF" />
                   
                   {/* Right Ear */}
-                  <circle cx="76" cy="50" r="11" fill="#f2b305" />
-                  <circle cx="76" cy="50" r="7" fill="#b88100" />
+                  <circle cx="76" cy="50" r="11" fill="#4F8FFF" />
+                  <circle cx="76" cy="50" r="7" fill="#2A5CBF" />
                   
                   {/* Swiply Head */}
-                  <circle cx="50" cy="50" r="28" fill="#f2b305" />
+                  <circle cx="50" cy="50" r="28" fill="#4F8FFF" />
                   
                   {/* Heart Face */}
                   <path d="M 50,38 C 42,28 32,34 33,45 C 34,54 45,61 50,64 C 55,61 66,54 67,45 C 68,34 58,28 50,38 Z" fill="#fff7b2" />
@@ -72,7 +72,7 @@ export default function Footer() {
                 href="https://instagram.com"
                 target="_blank"
                 rel="noreferrer"
-                className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:text-white hover:bg-[#f2b305]/20 hover:border-[#f2b305]/30 transition-all cursor-pointer"
+                className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:text-white hover:bg-[#4F8FFF]/20 hover:border-[#4F8FFF]/30 transition-all cursor-pointer"
                 id="footer-social-instagram"
               >
                 <Instagram className="h-5 w-5" />
@@ -81,7 +81,7 @@ export default function Footer() {
                 href="https://twitter.com"
                 target="_blank"
                 rel="noreferrer"
-                className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:text-white hover:bg-[#f2b305]/20 hover:border-[#f2b305]/30 transition-all cursor-pointer"
+                className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:text-white hover:bg-[#4F8FFF]/20 hover:border-[#4F8FFF]/30 transition-all cursor-pointer"
                 id="footer-social-twitter"
               >
                 <Twitter className="h-5 w-5" />
@@ -90,7 +90,7 @@ export default function Footer() {
                 href="https://discord.com"
                 target="_blank"
                 rel="noreferrer"
-                className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:text-white hover:bg-[#f2b305]/20 hover:border-[#f2b305]/30 transition-all cursor-pointer"
+                className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:text-white hover:bg-[#4F8FFF]/20 hover:border-[#4F8FFF]/30 transition-all cursor-pointer"
                 id="footer-social-discord"
               >
                 <MessageSquare className="h-5 w-5" />
@@ -137,7 +137,7 @@ export default function Footer() {
           </div>
 
           {/* Stay Updated / Newsletter Column */}
-          <div className="rounded-2xl glass-panel p-5 border border-white/15 shadow-xl max-w-sm">
+          <div className="rounded-2xl glass-panel p-5 border border-white/15 shadow-xl max-w-sm md:col-span-2 lg:col-span-2">
             <h3 className="text-white font-semibold text-sm tracking-wider uppercase mb-2">Stay Updated</h3>
             <p className="text-gray-400 text-xs mb-4">
               Subscribe to get the latest updates and features.
@@ -150,12 +150,12 @@ export default function Footer() {
                   placeholder="Enter your email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full rounded-xl bg-white/5 border border-white/10 px-4 py-2.5 pr-12 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-[#f2b305] focus:ring-1 focus:ring-[#f2b305] transition-all"
+                  className="w-full rounded-xl bg-white/5 border border-white/10 px-4 py-2.5 pr-12 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-[#4F8FFF] focus:ring-1 focus:ring-[#4F8FFF] transition-all"
                   id="newsletter-email"
                 />
                 <button
                   type="submit"
-                  className="absolute right-1.5 top-1.5 flex h-8 w-8 items-center justify-center rounded-lg bg-[#f2b305] text-black hover:opacity-90 font-bold transition-all cursor-pointer"
+                  className="absolute right-1.5 top-1.5 flex h-8 w-8 items-center justify-center rounded-lg bg-[#4F8FFF] text-white hover:opacity-90 font-bold transition-all cursor-pointer"
                   id="btn-newsletter-submit"
                 >
                   <Send className="h-4 w-4" />

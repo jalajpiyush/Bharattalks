@@ -1,0 +1,387 @@
+{
+  "/SwiplyBackendStack": [
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "<anonymous> (/app/applet/bin/swiply.ts:6:1)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/SwiplyBackendStack/UsersTable": [
+    {
+      "type": "aws:cdk:hasPhysicalName",
+      "data": {
+        "Ref": "UsersTable9725E9C8"
+      }
+    }
+  ],
+  "/SwiplyBackendStack/QueueTable": [
+    {
+      "type": "aws:cdk:hasPhysicalName",
+      "data": {
+        "Ref": "QueueTable4C3A1E0F"
+      }
+    }
+  ],
+  "/SwiplyBackendStack/RoomsTable": [
+    {
+      "type": "aws:cdk:hasPhysicalName",
+      "data": {
+        "Ref": "RoomsTableA5C1D45B"
+      }
+    }
+  ],
+  "/SwiplyBackendStack/BootstrapVersion": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "BootstrapVersion"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...aws-cdk-lib...",
+        "(no user code in 10 frames, use --stack-trace-limit to capture more)"
+      ]
+    }
+  ],
+  "/SwiplyBackendStack/CheckBootstrapVersion": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "CheckBootstrapVersion"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...aws-cdk-lib...",
+        "(no user code in 10 frames, use --stack-trace-limit to capture more)"
+      ]
+    }
+  ],
+  "/SwiplyBackendStack/SwiplyUserPool/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "SwiplyUserPoolD5096A63"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...new UserPool2 in aws-cdk-lib...",
+        "new SwiplyBackendStack (/app/applet/lib/swiply-stack.ts:15:22)",
+        "<anonymous> (/app/applet/bin/swiply.ts:6:1)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/SwiplyBackendStack/GoogleIdP/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "GoogleIdP776058BD"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...new UserPoolIdentityProviderGoogle2 in aws-cdk-lib...",
+        "new SwiplyBackendStack (/app/applet/lib/swiply-stack.ts:23:23)",
+        "<anonymous> (/app/applet/bin/swiply.ts:6:1)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/SwiplyBackendStack/SwiplyAppClient/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "SwiplyAppClient2D81C130"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...new UserPoolClient2 in aws-cdk-lib...",
+        "new SwiplyBackendStack (/app/applet/lib/swiply-stack.ts:36:28)",
+        "<anonymous> (/app/applet/bin/swiply.ts:6:1)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/SwiplyBackendStack/UsersTable/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "UsersTable9725E9C8"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...new Table2 in aws-cdk-lib...",
+        "new SwiplyBackendStack (/app/applet/lib/swiply-stack.ts:58:24)",
+        "<anonymous> (/app/applet/bin/swiply.ts:6:1)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/SwiplyBackendStack/QueueTable/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "QueueTable4C3A1E0F"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...new Table2 in aws-cdk-lib...",
+        "new SwiplyBackendStack (/app/applet/lib/swiply-stack.ts:64:24)",
+        "<anonymous> (/app/applet/bin/swiply.ts:6:1)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/SwiplyBackendStack/RoomsTable/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "RoomsTableA5C1D45B"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...new Table2 in aws-cdk-lib...",
+        "new SwiplyBackendStack (/app/applet/lib/swiply-stack.ts:70:24)",
+        "<anonymous> (/app/applet/bin/swiply.ts:6:1)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/SwiplyBackendStack/WebSocketHandler/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "WebSocketHandler47C0AA1A"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...new Function2 in aws-cdk-lib...",
+        "new SwiplyBackendStack (/app/applet/lib/swiply-stack.ts:77:30)",
+        "<anonymous> (/app/applet/bin/swiply.ts:6:1)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/SwiplyBackendStack/SwiplyWebSocketApi/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "SwiplyWebSocketApiA38B9853"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...new WebSocketApi2 in aws-cdk-lib...",
+        "new SwiplyBackendStack (/app/applet/lib/swiply-stack.ts:107:26)",
+        "<anonymous> (/app/applet/bin/swiply.ts:6:1)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/SwiplyBackendStack/ProductionStage/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "ProductionStage7C67E35B"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...new WebSocketStage2 in aws-cdk-lib...",
+        "new SwiplyBackendStack (/app/applet/lib/swiply-stack.ts:119:5)",
+        "<anonymous> (/app/applet/bin/swiply.ts:6:1)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/SwiplyBackendStack/CDKMetadata/Default": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "CDKMetadata"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...aws-cdk-lib, node internals...",
+        "(no user code in 10 frames, use --stack-trace-limit to capture more)"
+      ]
+    }
+  ],
+  "/SwiplyBackendStack/SwiplyUserPool/SwiplyCognitoDomain/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "SwiplyUserPoolSwiplyCognitoDomainEDE79498"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...WrappedClass.addDomain in aws-cdk-lib...",
+        "new SwiplyBackendStack (/app/applet/lib/swiply-stack.ts:51:14)",
+        "<anonymous> (/app/applet/bin/swiply.ts:6:1)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/SwiplyBackendStack/WebSocketHandler/ServiceRole/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "WebSocketHandlerServiceRole79B07D0E"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...new Function2 in aws-cdk-lib...",
+        "new SwiplyBackendStack (/app/applet/lib/swiply-stack.ts:77:30)",
+        "<anonymous> (/app/applet/bin/swiply.ts:6:1)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/SwiplyBackendStack/SwiplyWebSocketApi/$connect-Route/ConnectIntegration-Permission": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "SwiplyWebSocketApiconnectRouteConnectIntegrationPermission7208E9C4"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new SwiplyBackendStack (/app/applet/lib/swiply-stack.ts:109:18)",
+        "<anonymous> (/app/applet/bin/swiply.ts:6:1)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/SwiplyBackendStack/SwiplyWebSocketApi/$connect-Route/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "SwiplyWebSocketApiconnectRoute87B69D33"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new SwiplyBackendStack (/app/applet/lib/swiply-stack.ts:109:18)",
+        "<anonymous> (/app/applet/bin/swiply.ts:6:1)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/SwiplyBackendStack/SwiplyWebSocketApi/$disconnect-Route/DisconnectIntegration-Permission": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "SwiplyWebSocketApidisconnectRouteDisconnectIntegrationPermission20C14BEE"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new SwiplyBackendStack (/app/applet/lib/swiply-stack.ts:112:18)",
+        "<anonymous> (/app/applet/bin/swiply.ts:6:1)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/SwiplyBackendStack/SwiplyWebSocketApi/$disconnect-Route/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "SwiplyWebSocketApidisconnectRoute34DA77BB"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new SwiplyBackendStack (/app/applet/lib/swiply-stack.ts:112:18)",
+        "<anonymous> (/app/applet/bin/swiply.ts:6:1)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/SwiplyBackendStack/SwiplyWebSocketApi/$default-Route/DefaultIntegration-Permission": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "SwiplyWebSocketApidefaultRouteDefaultIntegrationPermission715F63D7"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new SwiplyBackendStack (/app/applet/lib/swiply-stack.ts:115:18)",
+        "<anonymous> (/app/applet/bin/swiply.ts:6:1)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/SwiplyBackendStack/SwiplyWebSocketApi/$default-Route/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "SwiplyWebSocketApidefaultRoute43C980AD"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new SwiplyBackendStack (/app/applet/lib/swiply-stack.ts:115:18)",
+        "<anonymous> (/app/applet/bin/swiply.ts:6:1)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/SwiplyBackendStack/WebSocketHandler/ServiceRole/DefaultPolicy/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "WebSocketHandlerServiceRoleDefaultPolicyF180304B"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...aws-cdk-lib...",
+        "(no user code in 10 frames, use --stack-trace-limit to capture more)"
+      ]
+    }
+  ],
+  "/SwiplyBackendStack/SwiplyWebSocketApi/$connect-Route/ConnectIntegration/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "SwiplyWebSocketApiconnectRouteConnectIntegration8B2C0187"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new SwiplyBackendStack (/app/applet/lib/swiply-stack.ts:109:18)",
+        "<anonymous> (/app/applet/bin/swiply.ts:6:1)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/SwiplyBackendStack/SwiplyWebSocketApi/$disconnect-Route/DisconnectIntegration/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "SwiplyWebSocketApidisconnectRouteDisconnectIntegrationE685BF80"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new SwiplyBackendStack (/app/applet/lib/swiply-stack.ts:112:18)",
+        "<anonymous> (/app/applet/bin/swiply.ts:6:1)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/SwiplyBackendStack/SwiplyWebSocketApi/$default-Route/DefaultIntegration/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "SwiplyWebSocketApidefaultRouteDefaultIntegration4D78EDB0"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new SwiplyBackendStack (/app/applet/lib/swiply-stack.ts:115:18)",
+        "<anonymous> (/app/applet/bin/swiply.ts:6:1)",
+        "...node internals..."
+      ]
+    }
+  ]
+}

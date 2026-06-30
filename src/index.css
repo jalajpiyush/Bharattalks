@@ -53,6 +53,19 @@
   }
 }
 
+@keyframes fall {
+  0% {
+    top: -20px;
+    transform: translateY(0) rotate(0deg);
+    opacity: 1;
+  }
+  100% {
+    top: 100%;
+    transform: translateY(350px) rotate(360deg);
+    opacity: 0;
+  }
+}
+
 /* Glassmorphism Classes styled for Premium Swiply Blue Theme */
 .glass-panel {
   background: rgba(18, 24, 38, 0.65);

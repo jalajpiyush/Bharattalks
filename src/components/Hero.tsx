@@ -14,40 +14,6 @@ interface HeroProps {
 }
 
 export default function Hero({ onStartChatting, onOpenAuth, user }: HeroProps) {
-  // Real-time live statistics from our server and Firestore DB
-  const [stats, setStats] = useState({
-    activeUsers: 14,
-    registeredUsers: 1240,
-    totalOnline: 186
-  });
-
-  useEffect(() => {
-    let active = true;
-    const fetchStats = async () => {
-      try {
-        // Resolve to a fully qualified absolute URL to bypass WebKit iframe relative-resolution bugs
-        const statsUrl = new URL("/api/stats/online", window.location.href).href;
-        const res = await fetch(statsUrl);
-        if (res.ok && active) {
-          const data = await res.json();
-          setStats({
-            activeUsers: data.activeUsers,
-            registeredUsers: data.registeredUsers,
-            totalOnline: data.totalOnline
-          });
-        }
-      } catch (err) {
-        console.error("Failed to fetch online stats:", err);
-      }
-    };
-    fetchStats();
-    const interval = setInterval(fetchStats, 5000);
-    return () => {
-      active = false;
-      clearInterval(interval);
-    };
-  }, []);
-
   // Facepile avatar photos
   const happyUsers = [
     "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&q=80&w=80&h=80",
@@ -114,7 +80,7 @@ export default function Hero({ onStartChatting, onOpenAuth, user }: HeroProps) {
                 <div className="h-[1px] flex-1 bg-white/20" />
               </div>
 
-              {/* Circles Row: Facebook, Apple, TikTok, Email */}
+              {/* Circles Row: Facebook, Apple, Email */}
               <div className="flex items-center justify-center gap-4 py-1">
                 {/* Facebook Button */}
                 <button
@@ -136,19 +102,6 @@ export default function Hero({ onStartChatting, onOpenAuth, user }: HeroProps) {
                   title="Connect with Apple"
                 >
                   <span className="text-2xl font-bold leading-none select-none translate-y-[-1px]"></span>
-                </button>
-
-                {/* TikTok Button */}
-                <button
-                  onClick={() => onOpenAuth("phone")}
-                  className="w-14 h-14 rounded-full bg-white hover:bg-gray-100 flex items-center justify-center text-black shadow-md transition-all cursor-pointer hover:scale-110"
-                  id="btn-swiply-tiktok"
-                  title="Connect with TikTok"
-                >
-                  {/* Custom TikTok Icon */}
-                  <svg className="w-5 h-5 fill-current" viewBox="0 0 24 24">
-                    <path d="M12.53.02C13.84 0 15.14.01 16.44 0c.08 1.53.63 3.09 1.75 4.17 1.12 1.11 2.7 1.62 4.24 1.79v4.03c-1.44-.05-2.89-.52-4.06-1.39-.63-.47-1.18-1.07-1.58-1.78v7.27c-.02 2.39-1.07 4.79-2.95 6.22-1.89 1.44-4.55 1.95-6.86 1.31-2.27-.63-4.26-2.31-5.18-4.5-.93-2.19-.74-4.83.47-6.85 1.2-2 3.44-3.32 5.79-3.43V8.4c-1.22.06-2.42.54-3.32 1.39-.94.88-1.47 2.15-1.51 3.43-.07 1.57.65 3.17 1.88 4.13 1.23.97 2.94 1.25 4.45.82 1.48-.42 2.71-1.6 3.13-3.07.13-.48.18-.98.17-1.48V.02z"/>
-                  </svg>
                 </button>
 
                 {/* Email/Envelope Button */}
@@ -221,7 +174,7 @@ export default function Hero({ onStartChatting, onOpenAuth, user }: HeroProps) {
             // Logged-in dashboard area: premium match options
             <div className="space-y-6 max-w-md bg-white/10 backdrop-blur-xl border border-white/10 rounded-3xl p-6 shadow-2xl">
               <div className="flex items-center gap-3">
-                <div className="h-12 w-12 rounded-full bg-[#f2b305] text-black font-bold flex items-center justify-center text-xl shadow-md border border-white/20">
+                <div className="h-12 w-12 rounded-full bg-[#4F8FFF] text-black font-bold flex items-center justify-center text-xl shadow-md border border-white/20">
                   {user.name ? user.name[0].toUpperCase() : "U"}
                 </div>
                 <div>

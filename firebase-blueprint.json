@@ -69,6 +69,80 @@
         }
       },
       "required": ["txnid", "amount", "email"]
+    },
+    "UserReport": {
+      "title": "UserReport",
+      "description": "Safety report filed against a user",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique report ID"
+        },
+        "reporterEmail": {
+          "type": "string",
+          "description": "Email of the reporting user"
+        },
+        "reporterPeerId": {
+          "type": "string",
+          "description": "Peer ID of the reporting user"
+        },
+        "reportedPeerId": {
+          "type": "string",
+          "description": "Peer ID of the reported user"
+        },
+        "reportedName": {
+          "type": "string",
+          "description": "Display name of the reported user"
+        },
+        "reason": {
+          "type": "string",
+          "description": "Reason category of the report"
+        },
+        "comments": {
+          "type": "string",
+          "description": "Additional comments/feedback from the reporter"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Exact time the report was submitted"
+        }
+      },
+      "required": ["id", "reporterPeerId", "reportedPeerId", "reason", "timestamp"]
+    },
+    "UserBlock": {
+      "title": "UserBlock",
+      "description": "Durable block registry preventing future match encounters",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique block ID"
+        },
+        "blockerEmail": {
+          "type": "string",
+          "description": "Email of the blocking user"
+        },
+        "blockerPeerId": {
+          "type": "string",
+          "description": "Peer ID of the blocking user"
+        },
+        "blockedPeerId": {
+          "type": "string",
+          "description": "Peer ID of the blocked user"
+        },
+        "blockedName": {
+          "type": "string",
+          "description": "Display name of the blocked user"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Exact time the block was submitted"
+        }
+      },
+      "required": ["id", "blockerPeerId", "blockedPeerId", "timestamp"]
     }
   },
   "firestore": {
@@ -79,6 +153,14 @@
     "/payments/{paymentId}": {
       "schema": "PaymentRecord",
       "description": "Durable ledger of PayU transactions"
+    },
+    "/reports/{reportId}": {
+      "schema": "UserReport",
+      "description": "Safety reports filed against users for inappropriate behavior"
+    },
+    "/blocks/{blockId}": {
+      "schema": "UserBlock",
+      "description": "Indicates user blocks to prevent future matchmaking and interactions"
     }
   }
 }

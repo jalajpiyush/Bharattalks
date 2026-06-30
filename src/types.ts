@@ -30,6 +30,7 @@ export interface Partner {
   bio: string;
   isReal?: boolean;
   peerId?: string;
+  webrtcRole?: "offerer" | "answerer";
 }
 
 export interface MatchSession {

@@ -6,86 +6,15 @@
 import { useState, useEffect, useRef, FormEvent } from "react";
 import { 
   Video, VideoOff, Mic, MicOff, Users, SkipForward, AlertOctagon, 
-  Sparkles, MessageSquare, Heart, Gift, Smile, Send, Search, RefreshCw, X, ShieldAlert,
-  Crown, CreditCard, Check, ShieldCheck, ExternalLink, Coins, Clock, Hash, ChevronDown, Maximize2, Minimize2
+  Sparkles, MessageSquare, MessageSquareOff, Heart, Gift, Smile, Send, Search, RefreshCw, X, ShieldAlert,
+  Crown, CreditCard, Check, ShieldCheck, ExternalLink, Coins, Clock, Hash, ChevronDown, Maximize2, Minimize2,
+  Ban
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { Partner, Message } from "../types";
-import { savePaymentRecord } from "../lib/firebase";
-
-// Simulated matches with custom vibes
-const simulatedPartners: Partner[] = [
-  {
-    id: "p1",
-    name: "Sneha",
-    age: 21,
-    gender: "female",
-    country: "India",
-    flag: "🇮🇳",
-    interests: ["Music", "Travels", "EDM", "Coding"],
-    style: "friendly Indian English, uses occasional Hindi slang like 'yaar' or 'Namaste', super polite and happy.",
-    avatarUrl: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&q=80&w=350&h=450",
-    videoUrl: "https://assets.mixkit.co/videos/preview/mixkit-woman-talking-on-a-video-call-on-laptop-40156-large.mp4",
-    status: "Exploring Delhi cafes! ☕️",
-    bio: "CS student in Delhi. Love meeting new friends around the world!"
-  },
-  {
-    id: "p2",
-    name: "Yuki",
-    age: 20,
-    gender: "female",
-    country: "Japan",
-    flag: "🇯🇵",
-    interests: ["Anime", "Cooking", "Cosplay", "Gaming"],
-    style: "polite, enthusiastic, uses Japanese exclamation markers or emojis like 🌸 ✨, says 'Arigato' and talks about ramen.",
-    avatarUrl: "https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&q=80&w=350&h=450",
-    videoUrl: "https://assets.mixkit.co/videos/preview/mixkit-young-woman-with-glasses-waving-at-laptop-video-call-40159-large.mp4",
-    status: "Ramen is life! 🍜",
-    bio: "Cosplayer and bakery designer from Kyoto. Let's talk anime!"
-  },
-  {
-    id: "p3",
-    name: "Alex",
-    age: 22,
-    gender: "male",
-    country: "USA",
-    flag: "🇺🇸",
-    interests: ["Gaming", "Coding", "Pizza", "EDM"],
-    style: "chill NYC gamer, uses lowercase texting, slang like 'bruh', 'no cap', 'vibe check', very laid back.",
-    avatarUrl: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&q=80&w=350&h=450",
-    videoUrl: "https://assets.mixkit.co/videos/preview/mixkit-man-playing-a-video-game-with-headphones-40019-large.mp4",
-    status: "Valorant all night 🎮",
-    bio: "Software developer from Brooklyn. Chilling and listening to lo-fi."
-  },
-  {
-    id: "p4",
-    name: "Chloe",
-    age: 23,
-    gender: "female",
-    country: "France",
-    flag: "🇫🇷",
-    interests: ["Fashion", "Art", "Travels", "Music"],
-    style: "Parisian art student style, elegant, says 'Bonjour', uses words like 'chic', 'magnifique', very artistic.",
-    avatarUrl: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&q=80&w=350&h=450",
-    videoUrl: "https://assets.mixkit.co/videos/preview/mixkit-woman-waving-at-her-laptop-during-a-video-call-40157-large.mp4",
-    status: "Sketching at the Louvre 🎨",
-    bio: "Fine arts major in Paris. I paint portraits and collect vintage vinyls."
-  },
-  {
-    id: "p5",
-    name: "Arjun",
-    age: 22,
-    gender: "male",
-    country: "Canada",
-    flag: "🇨🇦",
-    interests: ["Hiking", "Guitar", "Travels", "Coffee"],
-    style: "relaxed Canadian outdoorsman, extremely polite, uses 'eh', 'awesome', loves talking about nature and acoustic guitar.",
-    avatarUrl: "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&q=80&w=350&h=450",
-    videoUrl: "https://assets.mixkit.co/videos/preview/mixkit-man-waving-and-talking-during-a-video-call-40158-large.mp4",
-    status: "Mountain trails callin' 🏔️",
-    bio: "Environmental science student. Always hiking or playing acoustic jams."
-  }
-];
+import { ConsoleLogger, LogLevel, DefaultDeviceController, DefaultMeetingSession, MeetingSessionConfiguration } from 'amazon-chime-sdk-js';
+import { saveUserReport, saveUserBlock, enterMatchmakingQueue, leaveMatchmakingQueue, tryToMatchWithSomeone, subscribeToMatchStatus, sendSignal, subscribeToSignals, sendChatMessage, subscribeToChatMessages } from "../lib/aws";
+import SquadModeView from "./SquadModeView";
 
 const availableInterests = ["Gaming", "Music", "Coding", "Anime", "Travels", "Art", "EDM", "Cooking", "Coffee"];
 
@@ -132,7 +61,8 @@ export default function VideoChatArea() {
 
   const analyzeSentiment = async (messageText: string) => {
     try {
-      const res = await fetch("/api/sentiment", {
+      const apiUrl = import.meta.env.VITE_API_URL || "";
+      const res = await fetch(`${apiUrl}/api/sentiment`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ text: messageText })
@@ -169,21 +99,18 @@ export default function VideoChatArea() {
 
   // Real-time peer connections & timers
   const [myPeerId] = useState<string>(() => {
-    let id = localStorage.getItem("swiply_peer_id") || localStorage.getItem("bharattalk_peer_id");
-    if (!id) {
-      id = "client-" + Math.random().toString(36).substring(2, 11);
-      localStorage.setItem("swiply_peer_id", id);
-      localStorage.setItem("bharattalk_peer_id", id);
-    }
-    return id;
+    return "client-" + Math.random().toString(36).substring(2, 11) + "-" + Date.now();
   });
 
-  const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
+  const meetingSessionRef = useRef<any>(null);
+  const peerConnectionRef = useRef<any>(null); // Legacy
+
   const remoteVideoRef = useRef<HTMLVideoElement | null>(null);
-  const matchPollIntervalRef = useRef<any>(null);
+  const matchPollIntervalRef = useRef<any>(null); // Now stores AWS unsubscribe function
   const signalPollIntervalRef = useRef<any>(null);
   const chatPollIntervalRef = useRef<any>(null);
   const statusPollIntervalRef = useRef<any>(null);
+  const connectionTimeoutRef = useRef<any>(null);
 
   // WebRTC remote stream state
   const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
@@ -205,25 +132,42 @@ export default function VideoChatArea() {
 
   const cleanupWebRTC = () => {
     console.log("WebRTC: Cleaning up peer connection and intervals");
-    if (peerConnectionRef.current) {
-      peerConnectionRef.current.close();
-      peerConnectionRef.current = null;
+    if (meetingSessionRef.current) {
+      meetingSessionRef.current.audioVideo.stop();
+      meetingSessionRef.current = null;
     }
+
     if (matchPollIntervalRef.current) {
-      clearInterval(matchPollIntervalRef.current);
+      if (typeof matchPollIntervalRef.current === 'function') {
+        matchPollIntervalRef.current(); // Unsubscribe AWS
+      } else {
+        clearInterval(matchPollIntervalRef.current);
+      }
       matchPollIntervalRef.current = null;
     }
     if (signalPollIntervalRef.current) {
-      clearInterval(signalPollIntervalRef.current);
+      if (typeof signalPollIntervalRef.current === 'function') {
+        signalPollIntervalRef.current();
+      } else {
+        clearInterval(signalPollIntervalRef.current);
+      }
       signalPollIntervalRef.current = null;
     }
     if (chatPollIntervalRef.current) {
-      clearInterval(chatPollIntervalRef.current);
+      if (typeof chatPollIntervalRef.current === 'function') {
+        chatPollIntervalRef.current();
+      } else {
+        clearInterval(chatPollIntervalRef.current);
+      }
       chatPollIntervalRef.current = null;
     }
     if (statusPollIntervalRef.current) {
       clearInterval(statusPollIntervalRef.current);
       statusPollIntervalRef.current = null;
+    }
+    if (connectionTimeoutRef.current) {
+      clearTimeout(connectionTimeoutRef.current);
+      connectionTimeoutRef.current = null;
     }
     setRemoteStream(null);
     hasRemoteDescriptionRef.current = false;
@@ -253,6 +197,20 @@ export default function VideoChatArea() {
   const [reportSubmitting, setReportSubmitting] = useState(false);
   const [reportReason, setReportReason] = useState("harassment");
   const [reportComments, setReportComments] = useState("");
+  
+  // Blocked users persistent client cache
+  const [blockedPeerIds, setBlockedPeerIds] = useState<string[]>(() => {
+    try {
+      const saved = localStorage.getItem("swiply_blocked_peers");
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+  const [blockOpen, setBlockOpen] = useState(false);
+  const [blockSubmitting, setBlockSubmitting] = useState(false);
+  const [blockSuccess, setBlockSuccess] = useState(false);
+  
   const [giftOpen, setGiftOpen] = useState(false);
   
   // Floating emoji effect tracking
@@ -263,14 +221,98 @@ export default function VideoChatArea() {
     return localStorage.getItem("swiply_premium") === "true" || localStorage.getItem("bharattalk_premium") === "true";
   });
   const [genderFilter, setGenderFilter] = useState<"everyone" | "girls" | "boys">("everyone");
-  const [premiumModalOpen, setPremiumModalOpen] = useState(false);
-  const [upgradePlan, setUpgradePlan] = useState<"monthly" | "yearly">("monthly");
+  const [smartMatchEnabled, setSmartMatchEnabled] = useState<boolean>(false);
+  const [smartMatchLanguage, setSmartMatchLanguage] = useState<string>("everyone");
+  const [matchReason, setMatchReason] = useState<string>("");
+  const [languageDropdownOpen, setLanguageDropdownOpen] = useState<boolean>(false);
+  const [onlineCount, setOnlineCount] = useState<number>(0);
+  const [onlyRealChats, setOnlyRealChats] = useState<boolean>(false);
+
+  useEffect(() => {
+    let unsubscribe: () => void;
+    import("../lib/aws").then(({ subscribeToOnlineUsersCount }) => {
+      unsubscribe = subscribeToOnlineUsersCount((count) => {
+        setOnlineCount(count);
+      });
+    });
+    return () => {
+      if (unsubscribe) unsubscribe();
+    };
+  }, []);
   
   // Monkey.app layout state variables
-  const [activeTab, setActiveTab] = useState<"solo" | "squad">("solo");
+  const [activeTab, setActiveTab] = useState<"solo" | "squad" | "inbox">("solo");
   const [genderDropdownOpen, setGenderDropdownOpen] = useState(false);
   const [theaterMode, setTheaterMode] = useState(false);
   const [isViewportFullscreen, setIsViewportFullscreen] = useState(false);
+  const [isChatVisible, setIsChatVisible] = useState(true);
+
+  // Friends & Inbox State
+  const [friendsList, setFriendsList] = useState<Partner[]>(() => {
+    try {
+      const saved = localStorage.getItem("swiply_friends");
+      if (saved) {
+        return JSON.parse(saved);
+      }
+    } catch (e) {}
+    const initialFriends: Partner[] = [];
+    localStorage.setItem("swiply_friends", JSON.stringify(initialFriends));
+    return initialFriends;
+  });
+
+  const [friendChats, setFriendChats] = useState<Record<string, Message[]>>(() => {
+    try {
+      const saved = localStorage.getItem("swiply_friend_chats");
+      if (saved) {
+        return JSON.parse(saved);
+      }
+    } catch (e) {}
+    const seedChats: Record<string, Message[]> = {};
+    localStorage.setItem("swiply_friend_chats", JSON.stringify(seedChats));
+    return seedChats;
+  });
+
+  const [selectedFriendId, setSelectedFriendId] = useState<string>("p1");
+  const [friendInputMessage, setFriendInputMessage] = useState("");
+  const [isFriendTyping, setIsFriendTyping] = useState(false);
+
+  useEffect(() => {
+    if (activeTab === "inbox" && selectedFriendId) {
+      setTimeout(() => {
+        const container = document.getElementById("friend-messages-container");
+        if (container) {
+          container.scrollTo({ top: container.scrollHeight, behavior: "smooth" });
+        }
+      }, 80);
+    }
+  }, [activeTab, selectedFriendId, friendChats, isFriendTyping]);
+
+  const handleSendFriendMessage = async (e?: FormEvent) => {
+    if (e) e.preventDefault();
+    if (!friendInputMessage.trim() || !selectedFriendId) return;
+
+    const friend = friendsList.find(f => f.id === selectedFriendId);
+    if (!friend) return;
+
+    const userMsg: Message = {
+      id: `friend_m_${Date.now()}`,
+      role: "user",
+      sender: "You",
+      text: friendInputMessage.trim(),
+      timestamp: new Date().toISOString(),
+    };
+
+    const currentChatsForFriend = friendChats[selectedFriendId] || [];
+    const updatedChats = {
+      ...friendChats,
+      [selectedFriendId]: [...currentChatsForFriend, userMsg]
+    };
+
+    setFriendChats(updatedChats);
+    localStorage.setItem("swiply_friend_chats", JSON.stringify(updatedChats));
+    const originalText = friendInputMessage.trim();
+    setFriendInputMessage("");
+  };
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -283,182 +325,27 @@ export default function VideoChatArea() {
       window.removeEventListener("keydown", handleKeyDown);
     };
   }, [isViewportFullscreen]);
-  const [coinsCount, setCoinsCount] = useState(150);
+  const [coinsCount, setCoinsCount] = useState(() => {
+    const saved = localStorage.getItem("bharattalk_coins");
+    return saved ? parseInt(saved, 10) : 50;
+  });
+
+  useEffect(() => {
+    localStorage.setItem("bharattalk_coins", coinsCount.toString());
+  }, [coinsCount]);
+
   const [coinsAnimation, setCoinsAnimation] = useState(false);
   
-  // Checkout & PayU billing states
-  const [billingName, setBillingName] = useState(() => {
-    try {
-      const saved = localStorage.getItem("swiply_user") || localStorage.getItem("bharattalk_user");
-      if (saved) {
-        return JSON.parse(saved).name || "";
-      }
-    } catch (e) {}
-    return "";
-  });
-  const [billingEmail, setBillingEmail] = useState(() => {
-    try {
-      const saved = localStorage.getItem("swiply_user") || localStorage.getItem("bharattalk_user");
-      if (saved) {
-        return JSON.parse(saved).email || "";
-      }
-    } catch (e) {}
-    return "";
-  });
-  const [billingPhone, setBillingPhone] = useState("");
-  const [checkoutLoading, setCheckoutLoading] = useState(false);
-  const [checkoutSuccess, setCheckoutSuccess] = useState(false);
-  const [paymentError, setPaymentError] = useState<string | null>(null);
-
-  // Check URL query parameters for PayU redirect callback indicators on mount
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      const params = new URLSearchParams(window.location.search);
-      const paymentStatus = params.get("payment");
-      const txnid = params.get("txnid");
-      const errStatus = params.get("status");
-
-      if (paymentStatus === "success") {
-        const email = params.get("email") || "";
-        const firstname = params.get("firstname") || "";
-        const amount = params.get("amount") || "";
-        const plan = params.get("plan") || "monthly";
-
-        console.log(`WebRTC PayU: Payment success callback detected! TXN: ${txnid}`);
-        setIsPremium(true);
-        localStorage.setItem("swiply_premium", "true");
-        localStorage.setItem("bharattalk_premium", "true");
-        setCheckoutSuccess(true);
-        setPremiumModalOpen(true);
-        
-        if (email) {
-          // Log payment securely in Firestore
-          savePaymentRecord({
-            txnid: txnid || `tx_${Date.now()}`,
-            amount: amount || (plan === "yearly" ? "1999" : "299"),
-            email: email,
-            firstname: firstname,
-            plan: plan
-          }).then(() => {
-            console.log("Firebase: Payment recorded in Firestore successfully!");
-          }).catch((err) => {
-            console.error("Firebase: Error logging payment to Firestore:", err);
-          });
-        }
-
-        // Clear query parameters to restore clean client address bar
-        const cleanUrl = window.location.pathname;
-        window.history.replaceState({}, document.title, cleanUrl + "?view=chat");
-      } else if (paymentStatus === "failure") {
-        const errorMsg = params.get("error_message");
-        const errorCode = params.get("error_code");
-        let displayMsg = `Transaction was not successful (Status: ${errStatus || "Failed"}).`;
-        if (errorMsg) {
-          displayMsg = `${errorMsg}${errorCode ? ` (Code: ${errorCode})` : ""}`;
-        }
-        console.warn(`WebRTC PayU: Payment failure callback detected! Status: ${errStatus || "Failed"}, Msg: ${displayMsg}`);
-        setPremiumModalOpen(true);
-        setCheckoutSuccess(false);
-        setPaymentError(displayMsg);
-        
-        const cleanUrl = window.location.pathname;
-        window.history.replaceState({}, document.title, cleanUrl + "?view=chat");
-      } else if (paymentStatus === "error") {
-        setPremiumModalOpen(true);
-        setCheckoutSuccess(false);
-        setPaymentError("An error occurred during payment verification. Please try again.");
-        
-        const cleanUrl = window.location.pathname;
-        window.history.replaceState({}, document.title, cleanUrl + "?view=chat");
-      }
-    }
-  }, []);
-
   const handleGenderFilterSelect = (mode: "girls" | "boys") => {
     if (isPremium) {
       setGenderFilter(mode);
     } else {
-      setPremiumModalOpen(true);
-    }
-  };
-
-  const handleCheckoutSubmit = async (e: FormEvent) => {
-    e.preventDefault();
-    setCheckoutLoading(true);
-    setPaymentError(null);
-
-    const price = upgradePlan === "monthly" ? "299" : "1999";
-
-    try {
-      console.log("WebRTC PayU: Querying API server to generate payment payload & security hash...");
-      const response = await fetch("/api/payu/initiate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          amount: price,
-          firstname: billingName || "SwiplyUser",
-          email: billingEmail || "user@swiply.com",
-          phone: billingPhone || "9999999999",
-          udf1: myPeerId, // Sync payment back with this client's Peer ID
-          udf2: upgradePlan // monthly or yearly
-        })
-      });
-
-      if (!response.ok) {
-        const errData = await response.json();
-        throw new Error(errData.error || "Failed to initiate transaction");
+      if (coinsCount >= 10) {
+        setGenderFilter(mode);
+      } else {
+        window.dispatchEvent(new CustomEvent("open-premium-modal"));
       }
-
-      const data = await response.json();
-      console.log("WebRTC PayU: Generation success. Initializing browser POST submission...");
-
-      // Build hidden HTML form for redirection-based integration (prevents CORS blocks)
-      const form = document.createElement("form");
-      form.method = "POST";
-      form.action = data.actionUrl;
-
-      const params: Record<string, string> = {
-        key: data.key,
-        txnid: data.txnid,
-        amount: data.amount,
-        productinfo: data.productinfo,
-        firstname: data.firstname,
-        email: data.email,
-        phone: data.phone,
-        surl: data.surl,
-        furl: data.furl,
-        udf1: data.udf1,
-        udf2: data.udf2,
-        hash: data.hash,
-        service_provider: "payu_paisa"
-      };
-
-      Object.entries(params).forEach(([k, v]) => {
-        const input = document.createElement("input");
-        input.type = "hidden";
-        input.name = k;
-        input.value = v;
-        form.appendChild(input);
-      });
-
-      document.body.appendChild(form);
-      console.log(`WebRTC PayU: Submitting parameters securely to ${data.actionUrl}`);
-      form.submit();
-    } catch (err: any) {
-      console.error("WebRTC PayU: Initiation error:", err);
-      setPaymentError(err.message || "Failed to initiate payment. Please check inputs and retry.");
-      setCheckoutLoading(false);
     }
-  };
-
-  const handleClosePremiumModal = () => {
-    setPremiumModalOpen(false);
-    // Reset checkout states for next time if they close it
-    setTimeout(() => {
-      setCheckoutSuccess(false);
-      setCheckoutLoading(false);
-      setPaymentError(null);
-    }, 300);
   };
 
   // Video refs
@@ -466,26 +353,120 @@ export default function VideoChatArea() {
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
   const chatEndRef = useRef<HTMLDivElement | null>(null);
 
-  // Initialize and clean up user media on mount/enable
+  // Initialize user media on mount
   useEffect(() => {
-    if (isVideoEnabled) {
-      acquireCamera();
-    } else {
-      stopCamera();
-    }
+    let activeStream: MediaStream | null = null;
+    const initCamera = async () => {
+      try {
+        activeStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+        
+        // Apply initial states
+        activeStream.getAudioTracks().forEach((track) => {
+          track.enabled = !isMuted;
+        });
+        activeStream.getVideoTracks().forEach((track) => {
+          track.enabled = isVideoEnabled;
+        });
+        
+        setLocalStream(activeStream);
+        if (localVideoRef.current) {
+          localVideoRef.current.srcObject = activeStream;
+        }
+      } catch (err) {
+        console.warn("Could not acquire webcam or permissions denied.", err);
+      }
+    };
+    initCamera();
 
     return () => {
-      stopCamera();
+      if (activeStream) {
+        activeStream.getTracks().forEach(track => track.stop());
+      }
     };
-  }, [isVideoEnabled]);
+  }, []);
 
-  // Apply microphone mute/unmute status to local stream tracks
+  // Sync video toggle state
   useEffect(() => {
-    if (localStream) {
-      localStream.getAudioTracks().forEach((track) => {
-        track.enabled = !isMuted;
-      });
-    }
+    const syncVideoState = async () => {
+      if (localStream) {
+        let videoTracks = localStream.getVideoTracks();
+        
+        // If tracks exist, just toggle them
+        if (videoTracks.length > 0) {
+          videoTracks.forEach(track => {
+            track.enabled = isVideoEnabled;
+            console.log(`WebRTC: Video track ${track.id} enabled=${track.enabled}, readyState=${track.readyState}`);
+          });
+        } else if (isVideoEnabled) {
+          // If no video tracks exist (e.g. stopped externally), re-acquire and replace
+          try {
+            console.log("WebRTC: Re-acquiring video track...");
+            const newStream = await navigator.mediaDevices.getUserMedia({ video: true });
+            const newVideoTrack = newStream.getVideoTracks()[0];
+            
+            if (newVideoTrack) {
+              newVideoTrack.enabled = true;
+              localStream.addTrack(newVideoTrack);
+              
+              if (peerConnectionRef.current) {
+                const senders = peerConnectionRef.current.getSenders();
+                const sender = senders.find(s => s.track?.kind === "video");
+                if (sender) {
+                  console.log("WebRTC: Replacing missing video track on RTCPeerConnection");
+                  sender.replaceTrack(newVideoTrack);
+                } else {
+                   peerConnectionRef.current.addTrack(newVideoTrack, localStream);
+                }
+              }
+            }
+          } catch (err) {
+            console.warn("WebRTC: Failed to re-acquire video track", err);
+          }
+        }
+      }
+    };
+    syncVideoState();
+  }, [isVideoEnabled, localStream]);
+
+  // Sync audio toggle state
+  useEffect(() => {
+    const syncAudioState = async () => {
+      if (localStream) {
+        let audioTracks = localStream.getAudioTracks();
+        
+        if (audioTracks.length > 0) {
+          audioTracks.forEach((track) => {
+            track.enabled = !isMuted;
+            console.log(`WebRTC: Audio track ${track.id} enabled=${track.enabled}, readyState=${track.readyState}`);
+          });
+        } else if (!isMuted) {
+           try {
+             console.log("WebRTC: Re-acquiring audio track...");
+             const newStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+             const newAudioTrack = newStream.getAudioTracks()[0];
+             
+             if (newAudioTrack) {
+               newAudioTrack.enabled = true;
+               localStream.addTrack(newAudioTrack);
+               
+               if (peerConnectionRef.current) {
+                 const senders = peerConnectionRef.current.getSenders();
+                 const sender = senders.find(s => s.track?.kind === "audio");
+                 if (sender) {
+                   console.log("WebRTC: Replacing missing audio track on RTCPeerConnection");
+                   sender.replaceTrack(newAudioTrack);
+                 } else {
+                    peerConnectionRef.current.addTrack(newAudioTrack, localStream);
+                 }
+               }
+             }
+           } catch (err) {
+             console.warn("WebRTC: Failed to re-acquire audio track", err);
+           }
+        }
+      }
+    };
+    syncAudioState();
   }, [isMuted, localStream]);
 
   // Bind local stream to local video element when stream or video ref updates
@@ -508,11 +489,7 @@ export default function VideoChatArea() {
   useEffect(() => {
     return () => {
       cleanupWebRTC();
-      fetch("/api/match/leave", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ peerId: myPeerId })
-      }).catch(err => console.error("Error leaving lobby on unmount:", err));
+      leaveMatchmakingQueue(myPeerId).catch(err => console.error("Error leaving lobby on unmount:", err));
     };
   }, []);
 
@@ -528,28 +505,45 @@ export default function VideoChatArea() {
       stream.getAudioTracks().forEach((track) => {
         track.enabled = !isMuted;
       });
-      setLocalStream(stream);
+      stream.getVideoTracks().forEach((track) => {
+        track.enabled = isVideoEnabled;
+      });
+      
+      if (localStream) {
+        stream.getTracks().forEach(track => {
+           const existing = localStream.getTracks().find(t => t.kind === track.kind);
+           if (existing) {
+             localStream.removeTrack(existing);
+             existing.stop();
+           }
+           localStream.addTrack(track);
+        });
+      } else {
+        setLocalStream(stream);
+      }
+      
       if (localVideoRef.current) {
-        localVideoRef.current.srcObject = stream;
+        localVideoRef.current.srcObject = localStream || stream;
       }
       if (peerConnectionRef.current) {
+        const senders = peerConnectionRef.current.getSenders();
         stream.getTracks().forEach((track) => {
-          peerConnectionRef.current?.addTrack(track, stream);
+          const sender = senders.find(s => s.track?.kind === track.kind);
+          if (sender) {
+            sender.replaceTrack(track);
+          } else {
+            peerConnectionRef.current?.addTrack(track, localStream || stream);
+          }
         });
       }
+      setIsVideoEnabled(true);
     } catch (err) {
       console.warn("Could not acquire webcam or permissions denied.", err);
     }
   };
 
   const stopCamera = () => {
-    if (localStream) {
-      localStream.getTracks().forEach((track) => track.stop());
-      setLocalStream(null);
-    }
-    if (localVideoRef.current) {
-      localVideoRef.current.srcObject = null;
-    }
+    setIsVideoEnabled(false);
   };
 
   const toggleInterest = (interest: string) => {
@@ -588,6 +582,7 @@ export default function VideoChatArea() {
   // Disconnect handler
   const handlePartnerDisconnect = () => {
     console.log("Matchmaking: Partner disconnected. Resetting state and auto-rematching...");
+    const partnerToSkip = partner?.id;
     cleanupWebRTC();
     setPartner(null);
     setMessages([]);
@@ -602,11 +597,29 @@ export default function VideoChatArea() {
     setMessages([notice]);
 
     // Automatically trigger startMatching for seamless auto recovery!
-    startMatching();
+    startMatching(partnerToSkip);
   };
 
+  const [recentlySkipped, setRecentlySkipped] = useState<string[]>([]);
+
   // Perform matchmaking
-  const startMatching = () => {
+  const startMatching = (skipPartnerId?: string) => {
+    if ((genderFilter === "girls" || genderFilter === "boys") && !isPremium) {
+      if (coinsCount >= 10) {
+        setCoinsCount(prev => prev - 10);
+      } else {
+        window.dispatchEvent(new CustomEvent("open-premium-modal"));
+        return;
+      }
+    }
+
+    const currentSkipList = [...blockedPeerIds, ...recentlySkipped];
+    const partnerToSkip = skipPartnerId || partner?.id;
+    if (partnerToSkip && !currentSkipList.includes(partnerToSkip)) {
+      currentSkipList.push(partnerToSkip);
+      setRecentlySkipped(prev => [...prev, partnerToSkip]);
+    }
+
     cleanupWebRTC();
     setSessionStatus("searching");
     setDebugQueueStatus("Searching/Queued");
@@ -614,354 +627,256 @@ export default function VideoChatArea() {
     setMessages([]);
     setFriendStatus("add");
     setReportSuccess(false);
-
-    let searchStartTime = Date.now();
-    let fallbackTriggered = false;
+    setMatchReason("");
 
     const joinLobby = async () => {
       try {
-        console.log(`Matchmaking: Sending join request for peer ID ${myPeerId}`);
-        const res = await fetch("/api/match/join", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            peerId: myPeerId,
-            name: "User " + myPeerId.slice(-4).toUpperCase(),
-            age: 21,
-            gender: "everyone",
-            interests: selectedInterests,
-            avatarUrl: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=150&h=150"
-          })
-        });
-        const data = await res.json();
-        
-        if (data.status === "matched") {
-          console.log("Matchmaking: Instantly matched!", data.partner);
-          handleMatchedPartner(data.partner, data.role);
-        } else {
-          console.log("Matchmaking: In queue. Starting match status polling...");
-          // Poll matchmaking status every 1.5s
-          matchPollIntervalRef.current = setInterval(async () => {
-            if (Date.now() - searchStartTime > 30000) {
-              if (!fallbackTriggered) {
-                fallbackTriggered = true;
-                clearInterval(matchPollIntervalRef.current);
-                matchPollIntervalRef.current = null;
-                triggerSimulatedFallback();
-              }
-              return;
-            }
+        console.log(`Matchmaking: Entering queue for peer ID ${myPeerId}`);
+        let userName = "User " + myPeerId.slice(-4).toUpperCase();
+        let userAge = 21;
+        let userGender = "everyone";
+        let userAvatarUrl = "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=150&h=150";
 
-            try {
-              const statusRes = await fetch(`/api/match/status?peerId=${myPeerId}`);
-              const statusData = await statusRes.json();
-              if (statusData.status === "matched") {
-                console.log("Matchmaking: Matched on status poll!", statusData.partner);
-                clearInterval(matchPollIntervalRef.current);
-                matchPollIntervalRef.current = null;
-                handleMatchedPartner(statusData.partner, statusData.role);
-              }
-            } catch (err) {
-              console.error("Matchmaking: Status poll failed:", err);
-            }
-          }, 1500);
-        }
+        try {
+          const userStr = localStorage.getItem("swiply_user");
+          if (userStr) {
+            const userObj = JSON.parse(userStr);
+            if (userObj.name) userName = userObj.name;
+            if (userObj.age) userAge = parseInt(userObj.age);
+            if (userObj.gender) userGender = userObj.gender;
+            if (userObj.avatar) userAvatarUrl = userObj.avatar;
+          }
+        } catch (e) {}
+
+        const userData = {
+          peerId: myPeerId,
+          name: userName,
+          age: userAge,
+          gender: userGender,
+          interests: selectedInterests,
+          avatarUrl: userAvatarUrl
+        };
+
+        // 1. Enter the queue
+        const queueSize = await enterMatchmakingQueue(userData);
+        console.log(`Matchmaking: Entered queue. Current queue size: ${queueSize}`);
+
+        // 2. Try to match immediately
+        const instantlyMatched = await tryToMatchWithSomeone(myPeerId, genderFilter, currentSkipList);
+        
+        // Note: if instantlyMatched is true, the snapshot listener we are about to set will trigger 
+        // with the matched data. To avoid race conditions, we rely on the snapshot listener for the result.
+        
+        console.log("Matchmaking: In queue. Listening for matches...");
+        
+        // 3. Listen for changes to our matchmaking document
+        matchPollIntervalRef.current = subscribeToMatchStatus(myPeerId, (matchData) => {
+          console.log("Matchmaking: Match found!", matchData);
+          
+          if (matchPollIntervalRef.current && typeof matchPollIntervalRef.current === 'function') {
+             matchPollIntervalRef.current(); // Unsubscribe immediately
+             matchPollIntervalRef.current = null;
+          }
+          
+          console.log(`Matchmaking: Room created ${matchData.roomId}. Proceeding to video...`);
+          handleMatchedPartner(matchData.partner, matchData.role);
+        });
+
       } catch (err) {
         console.error("Matchmaking: Failed to join lobby:", err);
-        triggerSimulatedFallback();
       }
     };
 
     const handleMatchedPartner = async (partnerDetails: any, role: "offerer" | "answerer") => {
+      if (connectionTimeoutRef.current) clearTimeout(connectionTimeoutRef.current);
+      
+      const isRealUser = partnerDetails.isReal !== undefined ? partnerDetails.isReal : true;
       const fullPartner: Partner = {
         id: partnerDetails.peerId,
         name: partnerDetails.name || "Real User",
         age: partnerDetails.age || 21,
         gender: partnerDetails.gender || "male",
-        country: "India",
-        flag: "🇮🇳",
+        country: partnerDetails.country || "India",
+        flag: partnerDetails.flag || "🇮🇳",
         interests: partnerDetails.interests || [],
-        style: "friendly stranger",
+        style: partnerDetails.style || "friendly stranger",
         avatarUrl: partnerDetails.avatarUrl || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=150&h=150",
-        videoUrl: "",
-        status: "Excited to connect!",
-        bio: "Online on Swiply",
-        isReal: true,
-        peerId: partnerDetails.peerId
+        videoUrl: partnerDetails.videoUrl || "",
+        status: partnerDetails.status || "Excited to connect!",
+        bio: partnerDetails.bio || "Online on Swiply",
+        isReal: isRealUser,
+        peerId: partnerDetails.peerId,
+        webrtcRole: role
       };
 
       setPartner(fullPartner);
       setSessionStatus("connected");
       setDebugQueueStatus("Connected");
 
-      // Initialize WebRTC signaling & local/remote tracks
-      await initWebRTC(fullPartner.peerId!, role === "offerer");
-
-      // Start real-time polling for messages & WebRTC signals
-      startRealTimePolling(fullPartner.peerId!);
-    };
-
-    const triggerSimulatedFallback = () => {
-      console.log("Matchmaking: Sourcing timed out. Falling back to simulated AI partner.");
-      setDebugQueueStatus("Matched (Simulated)");
-      let candidates = simulatedPartners;
-      if (genderFilter !== "everyone") {
-        candidates = candidates.filter((p) => 
-          p.gender === (genderFilter === "girls" ? "female" : "male")
-        );
-      }
-      if (selectedInterests.length > 0) {
-        const matching = candidates.filter((p) => 
-          p.interests.some((tag) => selectedInterests.includes(tag))
-        );
-        if (matching.length > 0) {
-          candidates = matching;
+      connectionTimeoutRef.current = setTimeout(() => {
+        if (peerConnectionRef.current && peerConnectionRef.current.iceConnectionState !== "connected" && peerConnectionRef.current.iceConnectionState !== "completed") {
+          console.warn("WebRTC: Connection timeout! Dropping ghost match.");
+          handlePartnerDisconnect();
         }
-      }
-      const matched = candidates[Math.floor(Math.random() * candidates.length)];
-      setPartner({ ...matched, isReal: false });
-      setSessionStatus("connected");
+      }, 15000);
 
-      setTimeout(() => {
-        setIsTyping(true);
-        setTimeout(() => {
-          setIsTyping(false);
-          const greetMsg = matched.gender === "female" ? "Hey! How's it going? 👋" : "Yo! Vibe check, what's up? 🙌";
-          setMessages([{
-            id: `msg-greet-${Date.now()}`,
-            role: "model",
-            sender: matched.name,
-            text: greetMsg,
-            timestamp: new Date().toISOString()
-          }]);
-        }, 1200);
-      }, 1000);
+      if (isRealUser) {
+        // Initialize WebRTC signaling & local/remote tracks
+        await initWebRTC(fullPartner, role === "offerer");
+
+        // Start real-time polling for messages & WebRTC signals
+        startRealTimePolling(fullPartner.peerId!);
+      } else {
+        console.log("Matchmaking: Connected to simulated partner, skipping WebRTC initialization.");
+      }
     };
 
     joinLobby();
   };
 
-  const initWebRTC = async (partnerId: string, isOfferer: boolean) => {
+  const initWebRTC = async (currentPartner: Partner, isOfferer: boolean) => {
     try {
-      console.log(`WebRTC: Initializing RTCPeerConnection. Is Offerer: ${isOfferer}`);
-      setDebugMatchStatus(`Matched with ${partnerId} (${isOfferer ? "Offerer" : "Answerer"})`);
+      console.log(`Chime: Initializing MeetingSession. Is Offerer: ${isOfferer}`);
+      setDebugMatchStatus(`Matched with ${currentPartner.id} (${isOfferer ? "Offerer" : "Answerer"})`);
       
-      const pc = new RTCPeerConnection({
-        iceServers: [
-          { urls: "stun:stun.l.google.com:19302" },
-          { urls: "stun:stun1.l.google.com:19302" },
-          { urls: "stun:stun2.l.google.com:19302" },
-          { urls: "stun:stun3.l.google.com:19302" },
-          { urls: "stun:stun4.l.google.com:19302" }
-        ]
+      const meetingData = (currentPartner as any).meeting;
+      const attendeeData = (currentPartner as any).attendee;
+      if (!meetingData || !attendeeData) {
+        console.error("Missing Chime meeting/attendee data");
+        return;
+      }
+
+      const logger = new ConsoleLogger('ChimeMeetingLogs', LogLevel.INFO);
+      const deviceController = new DefaultDeviceController(logger);
+      const configuration = new MeetingSessionConfiguration(meetingData, attendeeData);
+      const meetingSession = new DefaultMeetingSession(configuration, logger, deviceController);
+      meetingSessionRef.current = meetingSession;
+
+      const audioVideo = meetingSession.audioVideo;
+
+      audioVideo.realtimeSubscribeToAttendeeIdPresence((attendeeId, present) => {
+        console.log(`Attendee ${attendeeId} present: ${present}`);
       });
 
-      peerConnectionRef.current = pc;
-      hasRemoteDescriptionRef.current = false;
-      iceCandidatesQueueRef.current = [];
-
-      // Update WebRTC initial state logs
-      setWebrtcConnectionState(pc.connectionState);
-      setWebrtcIceState(pc.iceConnectionState);
-      setWebrtcSignalingState(pc.signalingState);
-
-      pc.onconnectionstatechange = () => {
-        console.log(`WebRTC: Connection state changed to: ${pc.connectionState}`);
-        setWebrtcConnectionState(pc.connectionState);
-      };
-
-      pc.oniceconnectionstatechange = () => {
-        console.log(`WebRTC: ICE connection state changed to: ${pc.iceConnectionState}`);
-        setWebrtcIceState(pc.iceConnectionState);
-        if (pc.iceConnectionState === "failed" || pc.iceConnectionState === "disconnected") {
-          console.warn("WebRTC: ICE connection failed or disconnected, triggering recovery.");
-          handleWebRTCFailure();
+      audioVideo.addObserver({
+        videoTileDidUpdate: tileState => {
+          if (!tileState.boundAttendeeId || tileState.localTile || tileState.isContent) {
+            return;
+          }
+          if (remoteVideoRef.current) {
+            audioVideo.bindVideoElement(tileState.tileId, remoteVideoRef.current);
+          }
+        },
+        videoTileWasRemoved: tileState => {
+            console.log("Remote video removed");
         }
-      };
+      });
 
-      pc.onsignalingstatechange = () => {
-        console.log(`WebRTC: Signaling state changed to: ${pc.signalingState}`);
-        setWebrtcSignalingState(pc.signalingState);
-      };
-
-      // Add local media tracks if available
       if (localStream) {
-        console.log("WebRTC: Attaching local media tracks to connection.");
-        localStream.getTracks().forEach((track) => {
-          pc.addTrack(track, localStream);
-        });
-      } else {
-        console.warn("WebRTC: Local stream was empty when peer connection was established.");
+        const audioTracks = localStream.getAudioTracks();
+        if (audioTracks.length > 0) {
+          await (audioVideo as any).chooseAudioInputDevice(localStream);
+        }
+        const videoTracks = localStream.getVideoTracks();
+        if (videoTracks.length > 0) {
+          await (audioVideo as any).chooseVideoInputDevice(localStream);
+          audioVideo.startLocalVideoTile();
+        }
       }
 
-      // Handle local ICE candidates
-      pc.onicecandidate = (event) => {
-        if (event.candidate) {
-          console.log("WebRTC: Discovered local ICE candidate:", event.candidate.candidate);
-          setDebugIceCandidatesSent((prev) => prev + 1);
-          fetch("/api/signal/send", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              senderId: myPeerId,
-              receiverId: partnerId,
-              signal: { type: "candidate", candidate: event.candidate }
-            })
-          }).catch(err => console.error("Error sending candidate:", err));
-        }
-      };
-
-      // Handle remote tracks
-      pc.ontrack = (event) => {
-        console.log("WebRTC: Remote track received", event.streams);
-        if (event.streams[0]) {
-          setRemoteStream(event.streams[0]);
-        }
-      };
-
-      if (isOfferer) {
-        console.log("WebRTC: Client is Offerer. Creating data channel to force connection media lines...");
-        try {
-          pc.createDataChannel("swiply-data-channel");
-        } catch (e) {
-          console.warn("WebRTC: Failed to create data channel:", e);
-        }
-
-        console.log("WebRTC: Client is Offerer. Generating SDP Offer...");
-        const offer = await pc.createOffer();
-        await pc.setLocalDescription(offer);
-        setDebugOfferSent(true);
-
-        console.log("WebRTC: Transmitting SDP Offer to partner...");
-        await fetch("/api/signal/send", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            senderId: myPeerId,
-            receiverId: partnerId,
-            signal: { type: "offer", sdp: offer.sdp }
-          })
-        });
+      audioVideo.start();
+      hasRemoteDescriptionRef.current = true;
+      if (localVideoRef.current && localStream) {
+         localVideoRef.current.srcObject = localStream;
       }
+
     } catch (err) {
-      console.error("WebRTC: initWebRTC failed:", err);
+      console.error("Chime: initWebRTC failed:", err);
     }
   };
 
   const startRealTimePolling = (partnerId: string) => {
     console.log(`WebRTC: Initiating real-time handlers for partner ${partnerId}`);
 
-    // Poll signals (SDPs and candidates)
-    signalPollIntervalRef.current = setInterval(async () => {
-      try {
-        const res = await fetch(`/api/signal/poll?peerId=${myPeerId}`);
-        const data = await res.json();
-        for (const sigObj of data.signals) {
-          if (sigObj.senderId !== partnerId) {
-            console.warn(`WebRTC: Ignored signal from non-partner ${sigObj.senderId}`);
-            continue;
-          }
-
-          const pc = peerConnectionRef.current;
-          if (!pc) {
-            console.warn("WebRTC: Received signal, but peer connection is uninitialized.");
-            continue;
-          }
-
-          const signal = sigObj.signal;
-          if (signal.type === "offer") {
-            console.log("WebRTC: Received SDP Offer. Setting remote description...");
-            await pc.setRemoteDescription(new RTCSessionDescription({ type: "offer", sdp: signal.sdp }));
-            await flushIceCandidates(pc);
-
-            console.log("WebRTC: Generating SDP Answer...");
-            const answer = await pc.createAnswer();
-            await pc.setLocalDescription(answer);
-
-            console.log("WebRTC: Transmitting SDP Answer to partner...");
-            await fetch("/api/signal/send", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                senderId: myPeerId,
-                receiverId: partnerId,
-                signal: { type: "answer", sdp: answer.sdp }
-              })
-            });
-          } else if (signal.type === "answer") {
-            console.log("WebRTC: Received SDP Answer. Setting remote description...");
-            setDebugAnswerReceived(true);
-            await pc.setRemoteDescription(new RTCSessionDescription({ type: "answer", sdp: signal.sdp }));
-            await flushIceCandidates(pc);
-          } else if (signal.type === "candidate" && signal.candidate) {
-            console.log("WebRTC: Received remote ICE candidate");
-            setDebugIceCandidatesReceived((prev) => prev + 1);
-            if (pc.remoteDescription && pc.remoteDescription.type) {
-              try {
-                await pc.addIceCandidate(new RTCIceCandidate(signal.candidate));
-                console.log("WebRTC: Successfully applied remote ICE candidate");
-              } catch (err) {
-                console.warn("WebRTC: Failed to apply remote ICE candidate:", err);
-              }
-            } else {
-              console.log("WebRTC: Queueing remote ICE candidate (remote description not set yet)");
-              iceCandidatesQueueRef.current.push(signal.candidate);
-            }
-          }
-        }
-      } catch (err) {
-        console.error("WebRTC: Signal poll failed:", err);
+    // Listen for WebRTC signals (SDPs and candidates) via AWS
+    signalPollIntervalRef.current = subscribeToSignals(myPeerId, async (senderId, signal) => {
+      if (senderId !== partnerId) {
+        console.warn(`WebRTC: Ignored signal from non-partner ${senderId}`);
+        return;
       }
-    }, 1000);
 
-    // Poll messages
-    chatPollIntervalRef.current = setInterval(async () => {
-      try {
-        const res = await fetch(`/api/chat/poll?peerId=${myPeerId}`);
-        const data = await res.json();
-        if (data.messages && data.messages.length > 0) {
-          console.log(`Chat: Polled ${data.messages.length} text messages`);
-          
-          const reactionPrefix = "[REACTION]:";
-          const regularMessages: any[] = [];
-          
-          data.messages.forEach((m: any) => {
-            if (m.text && m.text.startsWith(reactionPrefix)) {
-              const emoji = m.text.slice(reactionPrefix.length).trim();
-              if (emoji) {
-                triggerGift(emoji);
-              }
-            } else {
-              regularMessages.push(m);
-            }
-          });
-
-          if (regularMessages.length > 0) {
-            setMessages((prev) => {
-              const newMsgs = regularMessages.map((m: any, idx: number) => {
-                const msgId = `msg-poll-${Date.now()}-${idx}`;
-                triggerSentimentAnalysis(msgId, m.text);
-                return {
-                  id: msgId,
-                  role: "model",
-                  sender: partner?.name || "Partner",
-                  text: m.text,
-                  timestamp: m.timestamp
-                };
-              });
-              return [...prev, ...newMsgs];
-            });
-          }
-        }
-      } catch (err) {
-        console.error("Chat message poll failed:", err);
+      const pc = peerConnectionRef.current;
+      if (!pc) {
+        console.warn("WebRTC: Received signal, but peer connection is uninitialized.");
+        return;
       }
-    }, 1000);
+
+      if (signal.type === "offer") {
+        console.log("WebRTC: Received SDP Offer. Setting remote description...");
+        await pc.setRemoteDescription(new RTCSessionDescription({ type: "offer", sdp: signal.sdp }));
+        await flushIceCandidates(pc);
+
+        console.log("WebRTC: Generating SDP Answer...");
+        const answer = await pc.createAnswer();
+        await pc.setLocalDescription(answer);
+
+        console.log("WebRTC: Transmitting SDP Answer to partner...");
+        sendSignal(partnerId, { type: "answer", sdp: answer.sdp });
+      } else if (signal.type === "answer") {
+        console.log("WebRTC: Received SDP Answer. Setting remote description...");
+        setDebugAnswerReceived(true);
+        await pc.setRemoteDescription(new RTCSessionDescription({ type: "answer", sdp: signal.sdp }));
+        await flushIceCandidates(pc);
+      } else if (signal.type === "candidate" && signal.candidate) {
+        console.log("WebRTC: Received remote ICE candidate");
+        setDebugIceCandidatesReceived((prev) => prev + 1);
+        if (pc.remoteDescription && pc.remoteDescription.type) {
+          try {
+            await pc.addIceCandidate(new RTCIceCandidate(signal.candidate));
+            console.log("WebRTC: Successfully applied remote ICE candidate");
+          } catch (err) {
+            console.warn("WebRTC: Failed to apply remote ICE candidate:", err);
+          }
+        } else {
+          console.log("WebRTC: Queueing remote ICE candidate (remote description not set yet)");
+          iceCandidatesQueueRef.current.push(signal.candidate);
+        }
+      }
+    });
+
+    // Listen for messages via AWS
+    chatPollIntervalRef.current = subscribeToChatMessages(myPeerId, (m: any) => {
+      if (m.senderId !== partnerId) return;
+
+      const reactionPrefix = "[REACTION]:";
+      if (m.text && m.text.startsWith(reactionPrefix)) {
+        const emoji = m.text.slice(reactionPrefix.length).trim();
+        if (emoji) {
+          triggerGift(emoji);
+        }
+      } else {
+        setMessages((prev) => {
+          const msgId = `msg-poll-${Date.now()}-${Math.random()}`;
+          triggerSentimentAnalysis(msgId, m.text);
+          return [
+            ...prev,
+            {
+              id: msgId,
+              role: "model",
+              sender: "Partner", // Using 'Partner' directly since partner ref may be stale inside closure
+              text: m.text,
+              timestamp: m.timestamp || Date.now()
+            }
+          ];
+        });
+      }
+    });
 
     // Poll partner status to detect disconnects instantly
     statusPollIntervalRef.current = setInterval(async () => {
       try {
-        const res = await fetch(`/api/match/status?peerId=${myPeerId}`);
+        const apiUrl = import.meta.env.VITE_API_URL || "";
+        const res = await fetch(`${apiUrl}/api/match/status?peerId=${myPeerId}`);
         const data = await res.json();
         
         // If the server says we are no longer matched, or matched with someone else, or we timed out
@@ -1000,56 +915,10 @@ export default function VideoChatArea() {
     setMessages(updatedMessages);
     triggerSentimentAnalysis(userMsg.id, userMsg.text);
 
-    if (partner.isReal) {
-      try {
-        await fetch("/api/chat/send", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            senderId: myPeerId,
-            receiverId: partner.peerId,
-            text: userText
-          })
-        });
-      } catch (err) {
-        console.error("Failed to transmit real-time text message:", err);
-      }
-      return;
-    }
-
-    setIsTyping(true);
-
     try {
-      const response = await fetch("/api/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          message: userText,
-          history: updatedMessages.slice(-6).map((m) => ({
-            role: m.role,
-            text: m.text
-          })),
-          partner: partner
-        })
-      });
-
-      const data = await response.json();
-      setIsTyping(false);
-
-      if (data.text) {
-        const partnerMsg: Message = {
-          id: `msg-partner-${Date.now()}`,
-          role: "model",
-          sender: partner.name,
-          text: data.text,
-          timestamp: new Date().toISOString()
-        };
-        setMessages((prev) => [...prev, partnerMsg]);
-        triggerSentimentAnalysis(partnerMsg.id, partnerMsg.text);
-      }
+      await sendChatMessage(partner.peerId!, myPeerId, { text: userText, timestamp: Date.now() });
     } catch (err) {
-      console.error("Failed to generate AI response:", err);
-      setIsTyping(false);
+      console.error("Failed to transmit real-time text message:", err);
     }
   };
 
@@ -1058,14 +927,67 @@ export default function VideoChatArea() {
     setFriendStatus("sending");
     setTimeout(() => {
       setFriendStatus("friends");
+      if (partner) {
+        setFriendsList(prev => {
+          if (prev.some(f => f.id === partner.id)) return prev;
+          const updated = [...prev, partner];
+          localStorage.setItem("swiply_friends", JSON.stringify(updated));
+          return updated;
+        });
+
+        setFriendChats(prev => {
+          if (prev[partner.id]) return prev;
+          const updated = {
+            ...prev,
+            [partner.id]: []
+          };
+          localStorage.setItem("swiply_friend_chats", JSON.stringify(updated));
+          return updated;
+        });
+      }
     }, 1500);
   };
 
   // Report Action
-  const handleReportSubmit = () => {
+  const handleReportSubmit = async () => {
+    if (!partner) return;
     setReportSubmitting(true);
-    // Simulate API request to safety moderation engine
-    setTimeout(() => {
+
+    const reportId = `rep_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const reportData = {
+      id: reportId,
+      reporterEmail: "anonymous@swiply.com",
+      reporterPeerId: myPeerId,
+      reportedPeerId: partner.id,
+      reportedName: partner.name,
+      reason: reportReason,
+      comments: reportComments || "",
+      timestamp: new Date().toISOString()
+    };
+
+    try {
+      // 1. Save safety report to DynamoDB
+      await saveUserReport(reportData);
+
+      // 2. Report triggers auto-blocking on server matchmaking
+      const apiUrl = import.meta.env.VITE_API_URL || "";
+      await fetch(`${apiUrl}/api/match/block`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          blockerPeerId: myPeerId,
+          blockedPeerId: partner.id
+        })
+      });
+
+      // 3. Add to client-side block list
+      const updatedBlocks = [...blockedPeerIds, partner.id];
+      setBlockedPeerIds(updatedBlocks);
+      localStorage.setItem("swiply_blocked_peers", JSON.stringify(updatedBlocks));
+
+    } catch (err) {
+      console.error("Failed to persist safety report to DynamoDB:", err);
+    } finally {
       setReportSubmitting(false);
       setReportSuccess(true);
       setTimeout(() => {
@@ -1075,7 +997,55 @@ export default function VideoChatArea() {
         setReportComments("");
         handleSkipNext(); // Auto skip matched user
       }, 4000);
-    }, 1500);
+    }
+  };
+
+  // Block Action
+  const handleBlockSubmit = async () => {
+    if (!partner) return;
+    setBlockSubmitting(true);
+
+    const blockId = `blk_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const blockData = {
+      id: blockId,
+      blockerEmail: "anonymous@swiply.com",
+      blockerPeerId: myPeerId,
+      blockedPeerId: partner.id,
+      blockedName: partner.name,
+      timestamp: new Date().toISOString()
+    };
+
+    try {
+      // 1. Save block record to DynamoDB
+      await saveUserBlock(blockData);
+
+      // 2. Disconnect and prevent matchmaking on the server
+      const apiUrl = import.meta.env.VITE_API_URL || "";
+      await fetch(`${apiUrl}/api/match/block`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          blockerPeerId: myPeerId,
+          blockedPeerId: partner.id
+        })
+      });
+
+      // 3. Update client-side list of blocked users
+      const updatedBlocks = [...blockedPeerIds, partner.id];
+      setBlockedPeerIds(updatedBlocks);
+      localStorage.setItem("swiply_blocked_peers", JSON.stringify(updatedBlocks));
+
+    } catch (err) {
+      console.error("Failed to persist block record in DynamoDB:", err);
+    } finally {
+      setBlockSubmitting(false);
+      setBlockSuccess(true);
+      setTimeout(() => {
+        setBlockOpen(false);
+        setBlockSuccess(false);
+        handleSkipNext(); // Auto skip to next partner
+      }, 3000);
+    }
   };
 
   // Trigger floating elements (gift bursts)
@@ -1097,32 +1067,17 @@ export default function VideoChatArea() {
 
     if (!partner) return;
 
-    if (partner.isReal) {
+    if (partner.isReal && partner.peerId) {
       try {
-        await fetch("/api/chat/send", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            senderId: myPeerId,
-            receiverId: partner.peerId,
-            text: `[REACTION]:${emoji}`
-          })
-        });
+        await sendChatMessage(partner.peerId, myPeerId, { text: `[REACTION]:${emoji}`, timestamp: Date.now() });
       } catch (err) {
         console.error("Failed to transmit emoji reaction:", err);
       }
-    } else {
-      // Simulate AI partner reacting back after a slight delay
-      setTimeout(() => {
-        const aiEmojis = ["👋", "🔥", "😂", "❤️", "👍", "🎉", "😮"];
-        const randomEmoji = aiEmojis[Math.floor(Math.random() * aiEmojis.length)];
-        triggerGift(randomEmoji);
-      }, 1000 + Math.random() * 1500);
     }
   };
 
   return (
-    <div className="w-full max-w-6xl mx-auto px-4 py-6" id="video-chat-container">
+    <div className={`w-full mx-auto px-4 py-6 transition-all duration-300 ${theaterMode ? "max-w-7xl" : "max-w-6xl"}`} id="video-chat-container">
       
       {/* 1. IDLE State - Match Setup Dashboard */}
       {sessionStatus === "idle" && (
@@ -1159,31 +1114,41 @@ export default function VideoChatArea() {
                 <span>Theater Mode</span>
               </button>
 
-              <button 
-                type="button"
-                onClick={() => {
-                  setCoinsCount(prev => prev + 10);
-                  setCoinsAnimation(true);
-                  setTimeout(() => setCoinsAnimation(false), 800);
-                  triggerGift("🪙");
-                }}
-                className="flex items-center gap-2 bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-black font-black text-xs px-4 py-2.5 rounded-full transition-all cursor-pointer shadow-md relative overflow-hidden"
-              >
-                <Coins className="h-4 w-4 animate-bounce" style={{ animationDuration: '2s' }} />
-                <span>{coinsCount} Coins</span>
-                <AnimatePresence>
-                  {coinsAnimation && (
-                    <motion.span 
-                      initial={{ y: 0, opacity: 1 }}
-                      animate={{ y: -25, opacity: 0 }}
-                      exit={{ opacity: 0 }}
-                      className="absolute right-2 font-black text-xs text-white drop-shadow-md"
-                    >
-                      +10
-                    </motion.span>
-                  )}
-                </AnimatePresence>
-              </button>
+              <div className="flex items-center gap-2">
+                <div 
+                  className="flex items-center gap-2 bg-white/5 border border-amber-500/30 text-amber-400 font-black text-xs px-4 py-2.5 rounded-full transition-all shadow-md relative overflow-hidden"
+                >
+                  <Coins className="h-4 w-4 animate-bounce" style={{ animationDuration: '2s' }} />
+                  <span>{coinsCount} Coins</span>
+                  <AnimatePresence>
+                    {coinsAnimation && (
+                      <motion.span 
+                        initial={{ y: 0, opacity: 1 }}
+                        animate={{ y: -25, opacity: 0 }}
+                        exit={{ opacity: 0 }}
+                        className="absolute right-2 font-black text-xs text-amber-300 drop-shadow-md"
+                      >
+                        +10
+                      </motion.span>
+                    )}
+                  </AnimatePresence>
+                </div>
+                
+                <button
+                  type="button"
+                  onClick={() => {
+                    // Simulate watching an ad
+                    alert("Simulating Google Ad video... You earned 10 coins!");
+                    setCoinsCount(prev => prev + 10);
+                    setCoinsAnimation(true);
+                    setTimeout(() => setCoinsAnimation(false), 800);
+                    triggerGift("🪙");
+                  }}
+                  className="flex items-center gap-1.5 bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-black font-black text-xs px-3 py-2.5 rounded-full transition-all cursor-pointer shadow-md"
+                >
+                  <span>+ Watch Ad</span>
+                </button>
+              </div>
             </div>
 
             {/* Right side circle action buttons */}
@@ -1207,7 +1172,7 @@ export default function VideoChatArea() {
               <button 
                 type="button"
                 title="Unlock Swiply VIP"
-                onClick={() => setPremiumModalOpen(true)}
+                onClick={() => window.dispatchEvent(new CustomEvent("open-premium-modal"))}
                 className="h-10 w-10 rounded-full bg-gradient-to-tr from-amber-400 to-yellow-500 hover:from-amber-300 hover:to-yellow-400 flex items-center justify-center text-black border border-white/10 shadow-md hover:scale-110 active:scale-90 transition-all cursor-pointer"
               >
                 <Crown className="h-4.5 w-4.5 fill-current" />
@@ -1231,287 +1196,497 @@ export default function VideoChatArea() {
                 <Heart className="h-4.5 w-4.5 fill-current/10" />
               </button>
 
-              <div 
-                title="Your Swiply Avatar"
-                className="h-10 w-10 rounded-full bg-gradient-to-tr from-purple-600 via-indigo-600 to-cyan-500 flex items-center justify-center text-base border border-white/20 shadow-md select-none"
-              >
-                🧑‍🚀
+              <div className="relative group select-none">
+                <div 
+                  title="Your Swiply Avatar"
+                  className={`h-10 w-10 rounded-full bg-gradient-to-tr from-purple-600 via-indigo-600 to-cyan-500 flex items-center justify-center text-base border shadow-md transition-all ${
+                    isPremium ? "border-amber-400 ring-2 ring-amber-500/30" : "border-white/20"
+                  }`}
+                >
+                  🧑‍🚀
+                </div>
+                {isPremium && (
+                  <div className="absolute -top-3.5 -right-1.5 bg-gradient-to-r from-amber-400 via-yellow-500 to-amber-600 text-[8px] font-black text-black px-1.5 py-0.5 rounded-full flex items-center gap-0.5 shadow-[0_0_12px_rgba(245,158,11,0.5)] border border-amber-300 animate-bounce" style={{ animationDuration: "3s" }}>
+                    <Crown className="h-2 w-2 fill-black/10 text-black" />
+                    <span>VIP</span>
+                  </div>
+                )}
               </div>
             </div>
           </div>
 
           {/* Main Dual Pane Layout: Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-stretch">
-            
-            {/* Left Card: Camera Preview Display */}
-            <div className="rounded-[32px] bg-slate-950/70 border border-white/10 shadow-2xl relative overflow-hidden flex flex-col justify-between min-h-[420px] md:min-h-[480px]">
+          {activeTab === "inbox" ? (
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-stretch animate-fadeIn">
               
-              {/* Camera element */}
-              {localStream ? (
-                <div className="absolute inset-0 w-full h-full z-0">
-                  <video 
-                    ref={localVideoRef}
-                    autoPlay
-                    playsInline
-                    muted
-                    className={`w-full h-full object-cover transform -scale-x-100 rounded-[32px] transition-all duration-300 ${activeFilterClass}`}
-                  />
-                  
-                  {/* Subtle active camera HUD decoration overlay */}
-                  <div className="absolute top-4 left-4 flex items-center gap-2 z-10 bg-black/50 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/5">
-                    <span className="flex h-2.5 w-2.5 rounded-full bg-emerald-500 animate-ping" />
-                    <span className="text-[10px] uppercase font-black tracking-widest text-emerald-400">Webcam Active</span>
+              {/* Left Column: Selected Friend's Chat Window (Col Span 7) */}
+              <div className="md:col-span-7 rounded-[32px] bg-slate-950/75 border border-white/10 shadow-2xl relative overflow-hidden flex flex-col min-h-[460px] md:min-h-[520px]">
+                {/* Header info of selected friend */}
+                {selectedFriendId ? (() => {
+                  const friend = friendsList.find(f => f.id === selectedFriendId);
+                  if (!friend) return <div className="flex-1 flex items-center justify-center text-gray-500 font-bold text-sm">Select a friend to start chatting</div>;
+                  return (
+                    <>
+                      <div className="p-4 bg-slate-900/50 border-b border-white/5 flex items-center justify-between gap-3">
+                        <div className="flex items-center gap-3">
+                          <img src={friend.avatarUrl} alt={friend.name} className="h-10 w-10 rounded-full object-cover border border-white/10" referrerPolicy="no-referrer" />
+                          <div>
+                            <div className="flex items-center gap-1.5">
+                              <h4 className="text-white font-black text-sm font-display">{friend.name}</h4>
+                              <span className="text-xs">{friend.flag}</span>
+                            </div>
+                            <p className="text-gray-400 text-[10px] italic leading-tight truncate max-w-xs">{friend.status}</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+                          <span className="text-[10px] text-emerald-400 font-bold tracking-wider uppercase">Active Chat</span>
+                        </div>
+                      </div>
+
+                      {/* Messages display */}
+                      <div className="flex-1 overflow-y-auto p-4 space-y-3 flex flex-col scrollbar-thin max-h-[300px] md:max-h-[360px]" id="friend-messages-container">
+                        {(!friendChats[selectedFriendId] || friendChats[selectedFriendId].length === 0) ? (
+                          <div className="flex-1 flex flex-col items-center justify-center text-center text-gray-500 text-xs py-10 space-y-1">
+                            <MessageSquare className="h-8 w-8 text-white/10 animate-pulse" />
+                            <p>No messages yet. Send a friendly wave!</p>
+                          </div>
+                        ) : (
+                          friendChats[selectedFriendId].map((msg) => {
+                            const isMe = msg.role === "user";
+                            return (
+                              <div key={msg.id} className={`flex flex-col max-w-[80%] ${isMe ? "self-end items-end" : "self-start items-start"}`}>
+                                <div className={`p-3 rounded-2xl text-xs font-medium leading-relaxed shadow-md ${
+                                  isMe 
+                                    ? "bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-tr-none" 
+                                    : "bg-white/5 border border-white/5 text-gray-200 rounded-tl-none"
+                                }`}>
+                                  {msg.text}
+                                </div>
+                                <span className="text-[8px] text-gray-500 mt-1 select-none font-medium px-1">
+                                  {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                </span>
+                              </div>
+                            );
+                          })
+                        )}
+                        {isFriendTyping && (
+                          <div className="self-start bg-white/5 border border-white/5 p-3 rounded-2xl rounded-tl-none flex items-center gap-1">
+                            <span className="h-1.5 w-1.5 rounded-full bg-purple-400 animate-bounce" style={{ animationDelay: "0ms" }} />
+                            <span className="h-1.5 w-1.5 rounded-full bg-purple-400 animate-bounce" style={{ animationDelay: "150ms" }} />
+                            <span className="h-1.5 w-1.5 rounded-full bg-purple-400 animate-bounce" style={{ animationDelay: "300ms" }} />
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Input form */}
+                      <form onSubmit={handleSendFriendMessage} className="p-4 bg-slate-900/50 border-t border-white/5 flex gap-2 items-center">
+                        <input
+                          type="text"
+                          value={friendInputMessage}
+                          onChange={(e) => setFriendInputMessage(e.target.value)}
+                          placeholder={`Message ${friend.name}...`}
+                          className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-purple-500 font-medium transition-colors"
+                        />
+                        <button
+                          type="submit"
+                          disabled={!friendInputMessage.trim()}
+                          className="h-9 w-9 bg-purple-600 hover:bg-purple-500 disabled:opacity-50 disabled:hover:bg-purple-600 text-white rounded-xl flex items-center justify-center transition-all cursor-pointer shadow-md active:scale-95"
+                        >
+                          <Send className="h-4 w-4" />
+                        </button>
+                      </form>
+                    </>
+                  );
+                })() : (
+                  <div className="flex-1 flex flex-col items-center justify-center text-center text-gray-500 text-sm p-8 space-y-2">
+                    <MessageSquare className="h-10 w-10 text-white/5" />
+                    <p className="font-bold">Chat Screen</p>
+                    <p className="text-xs text-gray-500 max-w-xs">Select any connected friend from your inbox list to open chat history and send messages!</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Right Column: Friends Inbox List (Col Span 5) */}
+              <div className="md:col-span-5 rounded-[32px] bg-[#5c4cf4] border border-white/10 shadow-[0_0_50px_rgba(92,76,244,0.3)] p-6 flex flex-col min-h-[460px] md:min-h-[520px] relative overflow-hidden">
+                <div className="absolute -top-12 -left-12 w-40 h-40 bg-white/5 rounded-full blur-xl pointer-events-none animate-pulse" />
+                <div className="absolute -bottom-12 -right-12 w-40 h-40 bg-white/5 rounded-full blur-xl pointer-events-none animate-pulse" />
+
+                <div className="relative z-10 flex flex-col h-full flex-1">
+                  {/* Top segment */}
+                  <div className="pb-4 border-b border-white/10 flex items-center justify-between">
+                    <div>
+                      <h3 className="text-white text-base font-black font-display tracking-tight flex items-center gap-1.5">
+                        <Users className="h-4 w-4 text-yellow-300" />
+                        <span>My Friends Inbox</span>
+                      </h3>
+                      <p className="text-purple-100/75 text-[10px] font-semibold mt-0.5 font-sans">Matched and connected friends</p>
+                    </div>
+                    <span className="bg-yellow-300 text-black text-[9px] font-black px-2 py-0.5 rounded-full shadow-md font-sans">
+                      {friendsList.length} Friends
+                    </span>
                   </div>
 
-                  {/* Camera Filters Button overlay in Preview */}
-                  <div className="absolute top-4 right-4 z-20">
-                    <button
+                  {/* Friends items queue */}
+                  <div className="flex-1 overflow-y-auto py-4 space-y-2 scrollbar-thin max-h-[360px]">
+                    {friendsList.length === 0 ? (
+                      <div className="flex-1 flex flex-col items-center justify-center text-center text-purple-100/60 text-xs py-12 space-y-2">
+                        <Heart className="h-10 w-10 text-yellow-300 animate-pulse fill-yellow-300/10" />
+                        <p className="font-bold text-white">Inbox is empty</p>
+                        <p className="max-w-[180px] mx-auto text-[10px]">Start video matching and click 'Add Friend' to start building your connections!</p>
+                        <button
+                          onClick={() => setActiveTab("solo")}
+                          className="mt-3 bg-yellow-300 hover:bg-yellow-200 text-black font-extrabold text-[10px] px-3 py-1.5 rounded-lg uppercase shadow-md transition-all cursor-pointer"
+                        >
+                          Find Friends Now
+                        </button>
+                      </div>
+                    ) : (
+                      friendsList.map((friend) => {
+                        const isSelected = selectedFriendId === friend.id;
+                        const lastMsg = friendChats[friend.id]?.[friendChats[friend.id].length - 1];
+                        return (
+                          <button
+                            key={friend.id}
+                            onClick={() => setSelectedFriendId(friend.id)}
+                            className={`w-full text-left p-3 rounded-2xl flex items-center gap-3 transition-all cursor-pointer relative border ${
+                              isSelected
+                                ? "bg-white text-black border-transparent shadow-lg scale-[1.02]"
+                                : "bg-white/5 border-white/10 text-white hover:bg-white/10"
+                            }`}
+                          >
+                            <div className="relative">
+                              <img src={friend.avatarUrl} alt={friend.name} className="h-10 w-10 rounded-full object-cover border border-white/10" referrerPolicy="no-referrer" />
+                              <span className="absolute bottom-0 right-0 h-2.5 w-2.5 bg-emerald-500 rounded-full border-2 border-[#5c4cf4]" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center justify-between gap-1">
+                                <h4 className={`font-black text-xs font-display flex items-center gap-1 ${isSelected ? "text-slate-900" : "text-white"}`}>
+                                  <span>{friend.name}</span>
+                                  <span className="text-xs">{friend.flag}</span>
+                                </h4>
+                                <span className={`text-[8px] font-semibold ${isSelected ? "text-gray-500" : "text-purple-200"}`}>
+                                  {friend.country}
+                                </span>
+                              </div>
+                              <p className={`text-[10px] truncate ${isSelected ? "text-gray-600" : "text-purple-100/80"}`}>
+                                {lastMsg ? lastMsg.text : friend.status}
+                              </p>
+                            </div>
+                          </button>
+                        );
+                      })
+                    )}
+                  </div>
+
+                  {/* Return button */}
+                  <button
+                    onClick={() => setActiveTab("solo")}
+                    className="w-full bg-white/15 hover:bg-white/20 text-white text-[10px] font-black uppercase tracking-wider py-2.5 rounded-xl transition-all cursor-pointer text-center mt-auto border border-white/5"
+                  >
+                    Back to Matchmaking
+                  </button>
+                </div>
+              </div>
+
+            </div>
+          ) : activeTab === "squad" ? (
+            <SquadModeView
+              localStream={localStream}
+              localVideoRef={localVideoRef}
+              isPremium={isPremium}
+              onOpenPremium={() => window.dispatchEvent(new CustomEvent("open-premium-modal"))}
+              onBackToSolo={() => setActiveTab("solo")}
+              selectedFilter={selectedFilter}
+              funFilters={funFilters}
+              coinsCount={coinsCount}
+              setCoinsCount={setCoinsCount}
+            />
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-stretch">
+              
+              {/* Left Card: Camera Preview Display */}
+              <div className="rounded-[32px] bg-slate-950/70 border border-white/10 shadow-2xl relative overflow-hidden flex flex-col justify-between min-h-[420px] md:min-h-[480px]">
+                
+                {/* Camera element */}
+                {localStream ? (
+                  <div className="absolute inset-0 w-full h-full z-0">
+                    <video 
+                      ref={localVideoRef}
+                      autoPlay
+                      playsInline
+                      muted
+                      className={`w-full h-full object-cover transform -scale-x-100 rounded-[32px] transition-all duration-300 ${activeFilterClass}`}
+                    />
+                    
+                    {/* Subtle active camera HUD decoration overlay */}
+                    <div className="absolute top-4 left-4 flex items-center gap-2 z-10 bg-black/50 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/5">
+                      <span className="flex h-2.5 w-2.5 rounded-full bg-emerald-500 animate-ping" />
+                      <span className="text-[10px] uppercase font-black tracking-widest text-emerald-400">Webcam Active</span>
+                    </div>
+
+                    {/* Camera Filters Button overlay in Preview */}
+                    <div className="absolute top-4 right-4 z-20">
+                      <button
+                        type="button"
+                        onClick={() => setFilterMenuOpen(!filterMenuOpen)}
+                        className="flex items-center gap-1.5 rounded-full bg-black/60 hover:bg-black/85 text-white text-xs font-bold px-3 py-1.5 backdrop-blur-md border border-white/10 transition-all shadow-md cursor-pointer hover:scale-105"
+                        id="btn-preview-filters-toggle"
+                        title="Video Filters"
+                      >
+                        <Sparkles className="h-3.5 w-3.5 text-yellow-400" />
+                        <span>Filters</span>
+                      </button>
+
+                      <AnimatePresence>
+                        {filterMenuOpen && (
+                          <>
+                            <div 
+                              className="fixed inset-0 z-40 cursor-default" 
+                              onClick={() => setFilterMenuOpen(false)} 
+                            />
+                            <motion.div
+                              initial={{ opacity: 0, scale: 0.9, y: 5 }}
+                              animate={{ opacity: 1, scale: 1, y: 0 }}
+                              exit={{ opacity: 0, scale: 0.9, y: 5 }}
+                              className="absolute right-0 mt-2 w-36 rounded-xl bg-black/90 backdrop-blur-lg border border-white/10 p-1 shadow-2xl z-50 space-y-0.5"
+                            >
+                              <p className="text-[10px] font-extrabold text-gray-400 px-2 py-1 uppercase tracking-wider select-none border-b border-white/5 mb-1 text-center">
+                                Select Filter
+                              </p>
+                              {funFilters.map((filter) => (
+                                <button
+                                  key={filter.id}
+                                  type="button"
+                                  onClick={() => {
+                                    setSelectedFilter(filter.id);
+                                    setFilterMenuOpen(false);
+                                  }}
+                                  className={`w-full text-left px-2 py-1.5 rounded-lg text-xs font-bold flex items-center gap-2 transition-colors cursor-pointer ${
+                                    selectedFilter === filter.id
+                                      ? "bg-purple-500/20 border border-purple-500/30 text-purple-300"
+                                      : "text-gray-300 hover:bg-white/5 border border-transparent"
+                                  }`}
+                                >
+                                  <span>{filter.emoji}</span>
+                                  <span className="truncate">{filter.name}</span>
+                                </button>
+                              ))}
+                            </motion.div>
+                          </>
+                        )}
+                      </AnimatePresence>
+                    </div>
+
+                    <div className="absolute bottom-4 left-4 z-10">
+                      <button 
+                        type="button"
+                        onClick={stopCamera}
+                        className="rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs px-4 py-2 shadow-lg transition-colors cursor-pointer"
+                      >
+                        Turn Off Cam
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex-1 flex flex-col items-center justify-center text-center p-8 space-y-6 relative z-10">
+                    <div className="relative h-20 w-20 flex items-center justify-center rounded-3xl bg-white/5 border border-white/10 shadow-xl mx-auto text-gray-500">
+                      <VideoOff className="h-10 w-10 text-gray-400" />
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <h3 className="text-xl font-bold font-display text-white">Your Camera is Off</h3>
+                      <p className="text-gray-400 text-xs max-w-xs mx-auto leading-relaxed">
+                        Enable your webcam to preview your stream and instantly match with new friends face-to-face!
+                      </p>
+                    </div>
+
+                    <button 
                       type="button"
-                      onClick={() => setFilterMenuOpen(!filterMenuOpen)}
-                      className="flex items-center gap-1.5 rounded-full bg-black/60 hover:bg-black/85 text-white text-xs font-bold px-3 py-1.5 backdrop-blur-md border border-white/10 transition-all shadow-md cursor-pointer hover:scale-105"
-                      id="btn-preview-filters-toggle"
-                      title="Video Filters"
+                      onClick={acquireCamera}
+                      className="rounded-2xl bg-[#5c4cf4] hover:bg-[#4c3cf3] text-white font-extrabold text-xs px-6 py-3 shadow-lg shadow-[#5c4cf4]/20 transition-all cursor-pointer scale-100 hover:scale-105 active:scale-95"
                     >
-                      <Sparkles className="h-3.5 w-3.5 text-yellow-400" />
-                      <span>Filters</span>
+                      Enable Webcam Preview
+                    </button>
+                  </div>
+                )}
+
+                {/* Glowing decorative frame orbs */}
+                <div className="absolute top-0 right-0 w-20 h-20 bg-purple-500/5 rounded-full blur-xl pointer-events-none" />
+                <div className="absolute bottom-0 left-0 w-20 h-20 bg-cyan-500/5 rounded-full blur-xl pointer-events-none" />
+              </div>
+
+              {/* Right Card: Matchmaker Controller exactly styled like Monkey.app */}
+              <div className="rounded-[32px] bg-[#5c4cf4] border border-white/10 shadow-[0_0_50px_rgba(92,76,244,0.3)] p-8 flex flex-col justify-between text-center relative overflow-hidden min-h-[420px] md:min-h-[480px]">
+                
+                {/* Aesthetic subtle patterns behind match controls */}
+                <div className="absolute -top-12 -left-12 w-40 h-40 bg-white/5 rounded-full blur-xl pointer-events-none animate-pulse" />
+                <div className="absolute -bottom-12 -right-12 w-40 h-40 bg-white/5 rounded-full blur-xl pointer-events-none animate-pulse" />
+                
+                {/* SOLO vs SQUAD vs INBOX Toggle bar */}
+                <div className="flex items-center gap-1 bg-[#4734e5] p-1 rounded-2xl w-fit mx-auto relative z-10 border border-white/5">
+                  <button 
+                    type="button"
+                    onClick={() => setActiveTab("solo")}
+                    className={`text-2xs font-extrabold uppercase tracking-wider px-5 py-1.5 rounded-xl transition-all cursor-pointer ${
+                      activeTab === "solo" 
+                        ? "bg-[#ffe600] text-black shadow-sm" 
+                        : "text-white/60 hover:text-white"
+                    }`}
+                  >
+                    Solo
+                  </button>
+                  <button 
+                    type="button"
+                    onClick={() => setActiveTab("inbox")}
+                    className={`text-2xs font-extrabold uppercase tracking-wider px-5 py-1.5 rounded-xl transition-all cursor-pointer flex items-center gap-1 ${
+                      activeTab === "inbox" 
+                        ? "bg-[#ffe600] text-black shadow-sm" 
+                        : "text-white/60 hover:text-white"
+                    }`}
+                  >
+                    <span>Inbox</span>
+                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse shrink-0" />
+                  </button>
+                  <button 
+                    type="button"
+                    onClick={() => setActiveTab("squad")}
+                    className={`text-2xs font-extrabold uppercase tracking-wider px-5 py-1.5 rounded-xl transition-all cursor-pointer ${
+                      activeTab === "squad" 
+                        ? "bg-[#ffe600] text-black shadow-sm" 
+                        : "text-white/60 hover:text-white"
+                    }`}
+                  >
+                    Squad
+                  </button>
+                </div>
+
+                {/* Central Cute Monkey SVG logo illustration exactly matching monkey.app layout */}
+                <div className="my-auto space-y-6 relative z-10">
+                  <div className="w-20 h-20 bg-[#3b82f6] rounded-[24px] flex items-center justify-center mx-auto shadow-xl border border-white/10 group hover:rotate-6 transition-all duration-300">
+                    <svg viewBox="0 0 100 100" className="w-14 h-14 select-none drop-shadow-md">
+                      {/* Face mask and base */}
+                      <circle cx="50" cy="50" r="38" fill="#eab308" />
+                      {/* Ears */}
+                      <circle cx="15" cy="50" r="11" fill="#ca8a04" />
+                      <circle cx="85" cy="50" r="11" fill="#ca8a04" />
+                      <circle cx="15" cy="50" r="6" fill="#eab308" />
+                      <circle cx="85" cy="50" r="6" fill="#eab308" />
+                      {/* Heart shaped inner face */}
+                      <path d="M28,45 C28,34 44,28 50,37 C56,28 72,34 72,45 C72,62 50,73 50,73 C50,73 28,62 28,45 Z" fill="#fef08a" />
+                      {/* Eyes */}
+                      <circle cx="41" cy="45" r="3.5" fill="#1e293b" />
+                      <circle cx="59" cy="45" r="3.5" fill="#1e293b" />
+                      {/* Cute blushing cheeks */}
+                      <circle cx="34" cy="51" r="3" fill="#f87171" opacity="0.6" />
+                      <circle cx="66" cy="51" r="3" fill="#f87171" opacity="0.6" />
+                      {/* Mouth curved smile */}
+                      <path d="M43,57 Q50,63 57,57" stroke="#1e293b" strokeWidth="3" strokeLinecap="round" fill="none" />
+                    </svg>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <h2 className="text-3xl font-black tracking-tight text-white font-display">
+                      Swiply
+                    </h2>
+                    <p className="text-purple-100/90 text-xs font-semibold max-w-xs mx-auto">
+                      Make new friends face-to-face
+                    </p>
+                  </div>
+                </div>
+
+                {/* Bottom Controllers: Gender Dropdown & Start Matchmaking button */}
+                <div className="space-y-3.5 relative z-20">
+                  
+                  {/* Custom White Dropdown selection button for Gender filter */}
+                  <div className="relative">
+                    <button 
+                      type="button"
+                      onClick={() => setGenderDropdownOpen(!genderDropdownOpen)}
+                      className="w-full bg-white text-black font-extrabold text-xs py-3.5 px-6 rounded-2xl flex items-center justify-center gap-2 shadow-lg hover:bg-gray-50 transition-all cursor-pointer"
+                    >
+                      <span>
+                        {genderFilter === "everyone" && "👫 Both"}
+                        {genderFilter === "girls" && "🙋‍♀️ Girls Only (VIP)"}
+                        {genderFilter === "boys" && "🙋‍♂️ Boys Only (VIP)"}
+                      </span>
+                      <ChevronDown className={`h-4 w-4 text-black transition-transform duration-300 ${genderDropdownOpen ? "rotate-180" : ""}`} />
                     </button>
 
                     <AnimatePresence>
-                      {filterMenuOpen && (
-                        <>
-                          <div 
-                            className="fixed inset-0 z-40 cursor-default" 
-                            onClick={() => setFilterMenuOpen(false)} 
-                          />
-                          <motion.div
-                            initial={{ opacity: 0, scale: 0.9, y: 5 }}
-                            animate={{ opacity: 1, scale: 1, y: 0 }}
-                            exit={{ opacity: 0, scale: 0.9, y: 5 }}
-                            className="absolute right-0 mt-2 w-36 rounded-xl bg-black/90 backdrop-blur-lg border border-white/10 p-1 shadow-2xl z-50 space-y-0.5"
+                      {genderDropdownOpen && (
+                        <motion.div 
+                          initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                          animate={{ opacity: 1, y: 0, scale: 1 }}
+                          exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                          transition={{ duration: 0.15 }}
+                          className="absolute bottom-full mb-2 left-0 right-0 bg-white text-black rounded-2xl shadow-2xl border border-gray-100 overflow-hidden z-50 text-left"
+                        >
+                          <button 
+                            type="button"
+                            onClick={() => {
+                              setGenderFilter("everyone");
+                              setGenderDropdownOpen(false);
+                            }}
+                            className="w-full text-xs font-bold px-4 py-3 text-left hover:bg-gray-100 transition-colors flex items-center justify-between border-b border-gray-50"
                           >
-                            <p className="text-[10px] font-extrabold text-gray-400 px-2 py-1 uppercase tracking-wider select-none border-b border-white/5 mb-1 text-center">
-                              Select Filter
-                            </p>
-                            {funFilters.map((filter) => (
-                              <button
-                                key={filter.id}
-                                type="button"
-                                onClick={() => {
-                                  setSelectedFilter(filter.id);
-                                  setFilterMenuOpen(false);
-                                }}
-                                className={`w-full text-left px-2 py-1.5 rounded-lg text-xs font-bold flex items-center gap-2 transition-colors cursor-pointer ${
-                                  selectedFilter === filter.id
-                                    ? "bg-purple-500/20 border border-purple-500/30 text-purple-300"
-                                    : "text-gray-300 hover:bg-white/5 border border-transparent"
-                                }`}
-                              >
-                                <span>{filter.emoji}</span>
-                                <span className="truncate">{filter.name}</span>
-                              </button>
-                            ))}
-                          </motion.div>
-                        </>
+                            <span>🌐 Everyone (Both)</span>
+                            {genderFilter === "everyone" && <Check className="h-4 w-4 text-purple-600" />}
+                          </button>
+
+                          <button 
+                            type="button"
+                            onClick={() => {
+                              handleGenderFilterSelect("girls");
+                              setGenderDropdownOpen(false);
+                            }}
+                            className="w-full text-xs font-bold px-4 py-3 text-left hover:bg-gray-100 transition-colors flex items-center justify-between border-b border-gray-50"
+                          >
+                            <span className="flex items-center gap-1.5">
+                              <span>🙋‍♀️ Girls Only</span>
+                              <span className="text-[8px] bg-gradient-to-r from-amber-400 to-yellow-500 text-black px-1.5 py-0.5 rounded font-black tracking-wider uppercase leading-none scale-90">
+                                VIP
+                              </span>
+                            </span>
+                            {genderFilter === "girls" && <Check className="h-4 w-4 text-purple-600" />}
+                          </button>
+
+                          <button 
+                            type="button"
+                            onClick={() => {
+                              handleGenderFilterSelect("boys");
+                              setGenderDropdownOpen(false);
+                            }}
+                            className="w-full text-xs font-bold px-4 py-3 text-left hover:bg-gray-100 transition-colors flex items-center justify-between"
+                          >
+                            <span className="flex items-center gap-1.5">
+                              <span>🙋‍♂️ Boys Only</span>
+                              <span className="text-[8px] bg-gradient-to-r from-amber-400 to-yellow-500 text-black px-1.5 py-0.5 rounded font-black tracking-wider uppercase leading-none scale-90">
+                                VIP
+                              </span>
+                            </span>
+                            {genderFilter === "boys" && <Check className="h-4 w-4 text-purple-600" />}
+                          </button>
+                        </motion.div>
                       )}
                     </AnimatePresence>
                   </div>
 
-                  <div className="absolute bottom-4 left-4 z-10">
-                    <button 
-                      type="button"
-                      onClick={stopCamera}
-                      className="rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs px-4 py-2 shadow-lg transition-colors cursor-pointer"
-                    >
-                      Turn Off Cam
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <div className="flex-1 flex flex-col items-center justify-center text-center p-8 space-y-6 relative z-10">
-                  <div className="relative h-20 w-20 flex items-center justify-center rounded-3xl bg-white/5 border border-white/10 shadow-xl mx-auto text-gray-500">
-                    <VideoOff className="h-10 w-10 text-gray-400" />
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <h3 className="text-xl font-bold font-display text-white">Your Camera is Off</h3>
-                    <p className="text-gray-400 text-xs max-w-xs mx-auto leading-relaxed">
-                      Enable your webcam to preview your stream and instantly match with new friends face-to-face!
-                    </p>
-                  </div>
-
+                  {/* Bright Yellow action button styled exactly like monkey.app with 3D tactile shadow */}
                   <button 
                     type="button"
-                    onClick={acquireCamera}
-                    className="rounded-2xl bg-[#5c4cf4] hover:bg-[#4c3cf3] text-white font-extrabold text-xs px-6 py-3 shadow-lg shadow-[#5c4cf4]/20 transition-all cursor-pointer scale-100 hover:scale-105 active:scale-95"
+                    onClick={startMatching}
+                    className="w-full bg-[#ffe600] text-black font-black uppercase text-sm tracking-widest py-4.5 rounded-2xl shadow-[0_5px_0_#9d8100] active:translate-y-1 active:shadow-none hover:bg-yellow-300 transition-all flex items-center justify-center gap-2 cursor-pointer border border-yellow-400/10"
                   >
-                    Enable Webcam Preview
+                    <Video className="h-4 w-4" />
+                    <span>Start Video Chat</span>
                   </button>
                 </div>
-              )}
 
-              {/* Glowing decorative frame orbs */}
-              <div className="absolute top-0 right-0 w-20 h-20 bg-purple-500/5 rounded-full blur-xl pointer-events-none" />
-              <div className="absolute bottom-0 left-0 w-20 h-20 bg-cyan-500/5 rounded-full blur-xl pointer-events-none" />
-            </div>
-
-            {/* Right Card: Matchmaker Controller exactly styled like Monkey.app */}
-            <div className="rounded-[32px] bg-[#5c4cf4] border border-white/10 shadow-[0_0_50px_rgba(92,76,244,0.3)] p-8 flex flex-col justify-between text-center relative overflow-hidden min-h-[420px] md:min-h-[480px]">
-              
-              {/* Aesthetic subtle patterns behind match controls */}
-              <div className="absolute -top-12 -left-12 w-40 h-40 bg-white/5 rounded-full blur-xl pointer-events-none animate-pulse" />
-              <div className="absolute -bottom-12 -right-12 w-40 h-40 bg-white/5 rounded-full blur-xl pointer-events-none animate-pulse" />
-              
-              {/* SOLO vs SQUAD Toggle bar */}
-              <div className="flex items-center gap-1 bg-[#4734e5] p-1 rounded-2xl w-fit mx-auto relative z-10 border border-white/5">
-                <button 
-                  type="button"
-                  onClick={() => setActiveTab("solo")}
-                  className={`text-2xs font-extrabold uppercase tracking-wider px-5 py-1.5 rounded-xl transition-all cursor-pointer ${
-                    activeTab === "solo" 
-                      ? "bg-[#ffe600] text-black shadow-sm" 
-                      : "text-white/60 hover:text-white"
-                  }`}
-                >
-                  Solo
-                </button>
-                <button 
-                  type="button"
-                  onClick={() => alert("Squad Mode: SQUAD matchmaking allows you to group up with friends and chat with other groups! This feature is coming soon in the Swiply VIP release.")}
-                  className={`text-2xs font-extrabold uppercase tracking-wider px-5 py-1.5 rounded-xl transition-all cursor-pointer ${
-                    activeTab === "squad" 
-                      ? "bg-[#ffe600] text-black shadow-sm" 
-                      : "text-white/60 hover:text-white"
-                  }`}
-                >
-                  Squad
-                </button>
-              </div>
-
-              {/* Central Cute Monkey SVG logo illustration exactly matching monkey.app layout */}
-              <div className="my-auto space-y-6 relative z-10">
-                <div className="w-20 h-20 bg-[#3b82f6] rounded-[24px] flex items-center justify-center mx-auto shadow-xl border border-white/10 group hover:rotate-6 transition-all duration-300">
-                  <svg viewBox="0 0 100 100" className="w-14 h-14 select-none drop-shadow-md">
-                    {/* Face mask and base */}
-                    <circle cx="50" cy="50" r="38" fill="#eab308" />
-                    {/* Ears */}
-                    <circle cx="15" cy="50" r="11" fill="#ca8a04" />
-                    <circle cx="85" cy="50" r="11" fill="#ca8a04" />
-                    <circle cx="15" cy="50" r="6" fill="#eab308" />
-                    <circle cx="85" cy="50" r="6" fill="#eab308" />
-                    {/* Heart shaped inner face */}
-                    <path d="M28,45 C28,34 44,28 50,37 C56,28 72,34 72,45 C72,62 50,73 50,73 C50,73 28,62 28,45 Z" fill="#fef08a" />
-                    {/* Eyes */}
-                    <circle cx="41" cy="45" r="3.5" fill="#1e293b" />
-                    <circle cx="59" cy="45" r="3.5" fill="#1e293b" />
-                    {/* Cute blushing cheeks */}
-                    <circle cx="34" cy="51" r="3" fill="#f87171" opacity="0.6" />
-                    <circle cx="66" cy="51" r="3" fill="#f87171" opacity="0.6" />
-                    {/* Mouth curved smile */}
-                    <path d="M43,57 Q50,63 57,57" stroke="#1e293b" strokeWidth="3" strokeLinecap="round" fill="none" />
-                  </svg>
-                </div>
-
-                <div className="space-y-1.5">
-                  <h2 className="text-3xl font-black tracking-tight text-white font-display">
-                    Swiply
-                  </h2>
-                  <p className="text-purple-100/90 text-xs font-semibold max-w-xs mx-auto">
-                    Make new friends face-to-face
-                  </p>
-                </div>
-              </div>
-
-              {/* Bottom Controllers: Gender Dropdown & Start Matchmaking button */}
-              <div className="space-y-3.5 relative z-20">
-                
-                {/* Custom White Dropdown selection button for Gender filter */}
-                <div className="relative">
-                  <button 
-                    type="button"
-                    onClick={() => setGenderDropdownOpen(!genderDropdownOpen)}
-                    className="w-full bg-white text-black font-extrabold text-xs py-3.5 px-6 rounded-2xl flex items-center justify-center gap-2 shadow-lg hover:bg-gray-50 transition-all cursor-pointer"
-                  >
-                    <span>
-                      {genderFilter === "everyone" && "👫 Both"}
-                      {genderFilter === "girls" && "🙋‍♀️ Girls Only (VIP)"}
-                      {genderFilter === "boys" && "🙋‍♂️ Boys Only (VIP)"}
-                    </span>
-                    <ChevronDown className={`h-4 w-4 text-black transition-transform duration-300 ${genderDropdownOpen ? "rotate-180" : ""}`} />
-                  </button>
-
-                  <AnimatePresence>
-                    {genderDropdownOpen && (
-                      <motion.div 
-                        initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                        animate={{ opacity: 1, y: 0, scale: 1 }}
-                        exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                        transition={{ duration: 0.15 }}
-                        className="absolute bottom-full mb-2 left-0 right-0 bg-white text-black rounded-2xl shadow-2xl border border-gray-100 overflow-hidden z-50 text-left"
-                      >
-                        <button 
-                          type="button"
-                          onClick={() => {
-                            setGenderFilter("everyone");
-                            setGenderDropdownOpen(false);
-                          }}
-                          className="w-full text-xs font-bold px-4 py-3 text-left hover:bg-gray-100 transition-colors flex items-center justify-between border-b border-gray-50"
-                        >
-                          <span>🌐 Everyone (Both)</span>
-                          {genderFilter === "everyone" && <Check className="h-4 w-4 text-purple-600" />}
-                        </button>
-
-                        <button 
-                          type="button"
-                          onClick={() => {
-                            handleGenderFilterSelect("girls");
-                            setGenderDropdownOpen(false);
-                          }}
-                          className="w-full text-xs font-bold px-4 py-3 text-left hover:bg-gray-100 transition-colors flex items-center justify-between border-b border-gray-50"
-                        >
-                          <span className="flex items-center gap-1.5">
-                            <span>🙋‍♀️ Girls Only</span>
-                            <span className="text-[8px] bg-gradient-to-r from-amber-400 to-yellow-500 text-black px-1.5 py-0.5 rounded font-black tracking-wider uppercase leading-none scale-90">
-                              VIP
-                            </span>
-                          </span>
-                          {genderFilter === "girls" && <Check className="h-4 w-4 text-purple-600" />}
-                        </button>
-
-                        <button 
-                          type="button"
-                          onClick={() => {
-                            handleGenderFilterSelect("boys");
-                            setGenderDropdownOpen(false);
-                          }}
-                          className="w-full text-xs font-bold px-4 py-3 text-left hover:bg-gray-100 transition-colors flex items-center justify-between"
-                        >
-                          <span className="flex items-center gap-1.5">
-                            <span>🙋‍♂️ Boys Only</span>
-                            <span className="text-[8px] bg-gradient-to-r from-amber-400 to-yellow-500 text-black px-1.5 py-0.5 rounded font-black tracking-wider uppercase leading-none scale-90">
-                              VIP
-                            </span>
-                          </span>
-                          {genderFilter === "boys" && <Check className="h-4 w-4 text-purple-600" />}
-                        </button>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                </div>
-
-                 {/* Bright Yellow action button styled exactly like monkey.app with 3D tactile shadow */}
-                <button 
-                  type="button"
-                  onClick={startMatching}
-                  className="w-full bg-[#ffe600] text-black font-black uppercase text-sm tracking-widest py-4.5 rounded-2xl shadow-[0_5px_0_#9d8100] active:translate-y-1 active:shadow-none hover:bg-yellow-300 transition-all flex items-center justify-center gap-2 cursor-pointer border border-yellow-400/10"
-                >
-                  <Video className="h-4 w-4" />
-                  <span>Start Video Chat</span>
-                </button>
               </div>
 
             </div>
-
-          </div>
+          )}
 
           {/* Tray 3: Interests selecting box at bottom (Interactive and beautiful) */}
           <div className="rounded-[32px] bg-slate-900/60 border border-white/10 p-6 shadow-xl text-center relative overflow-hidden" id="interests-section">
@@ -1552,53 +1727,69 @@ export default function VideoChatArea() {
         </div>
       )}
 
-      {/* 2. SEARCHING State - Radar Scan Loop */}
-      {sessionStatus === "searching" && (
-        <div className="flex flex-col items-center justify-center min-h-[420px] text-center space-y-8 relative">
-          {/* Ambient background glows */}
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-72 h-72 bg-purple-500/10 rounded-full blur-3xl animate-pulse" />
-
-          {/* Pulsating Glowing Radar */}
-          <div className="relative h-48 w-48 flex items-center justify-center">
-            
-            {/* Concentric expanding ripples in brand colors */}
-            <div className="absolute inset-0 rounded-full border border-purple-500/30 animate-ping" style={{ animationDuration: "2.2s" }} />
-            <div className="absolute inset-4 rounded-full border border-indigo-500/20 animate-ping" style={{ animationDuration: "2.8s" }} />
-            <div className="absolute inset-8 rounded-full border border-cyan-500/15 animate-ping" style={{ animationDuration: "3.5s" }} />
-
-            {/* Central scanning pointer circle */}
-            <div className="h-28 w-28 rounded-full bg-gradient-to-tr from-purple-600 via-indigo-600 to-cyan-500 opacity-95 border border-white/20 flex items-center justify-center shadow-[0_0_40px_rgba(139,92,246,0.3)] relative">
-              <RefreshCw className="h-9 w-9 text-white animate-spin" style={{ animationDuration: "5s" }} />
+      {/* 2. SEARCHING State - Simple Layout */}
+      {sessionStatus === "searching" && (() => {
+        let userAvatarUrl = "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=150&h=150";
+        try {
+          const userStr = localStorage.getItem("swiply_user");
+          if (userStr) {
+            const userObj = JSON.parse(userStr);
+            if (userObj.avatar) userAvatarUrl = userObj.avatar;
+          }
+        } catch(e) {}
+        
+        return (
+          <div className="flex flex-col items-center justify-center min-h-[500px] text-center space-y-10 animate-fadeIn">
+            {/* Pulse Animation Container */}
+            <div className="relative h-56 w-56 flex items-center justify-center mt-8">
+              {/* Outer Pulse Rings */}
+              <div className="absolute inset-0 rounded-full border-2 border-[#5c4cf4]/30 animate-ping" style={{ animationDuration: '3s' }}></div>
+              <div className="absolute inset-6 rounded-full border-2 border-purple-500/20 animate-ping" style={{ animationDuration: '2s' }}></div>
+              <div className="absolute inset-10 rounded-full border-2 border-blue-400/20 animate-ping" style={{ animationDuration: '1.5s' }}></div>
+              
+              {/* Avatar Center */}
+              <div className="relative z-10 h-28 w-28 rounded-full overflow-hidden border-4 border-slate-900 shadow-[0_0_40px_rgba(92,76,244,0.6)] ring-4 ring-[#5c4cf4]/50">
+                <img 
+                  src={userAvatarUrl} 
+                  alt="My Avatar" 
+                  className="w-full h-full object-cover"
+                  referrerPolicy="no-referrer"
+                />
+              </div>
             </div>
 
-          </div>
-
-          <div className="space-y-2 relative z-10">
-            <h3 className="text-xl md:text-2xl font-extrabold font-display text-transparent bg-clip-text bg-gradient-to-r from-white via-purple-100 to-indigo-200 animate-pulse">
-              Searching for matches...
-            </h3>
-            {selectedInterests.length > 0 ? (
-              <p className="text-cyan-400 text-xs font-bold uppercase tracking-wider bg-cyan-950/30 border border-cyan-500/20 px-3 py-1 rounded-full inline-block">
-                Matching with tags: {selectedInterests.map(t => `#${t}`).join(", ")}
+            <div className="space-y-4 max-w-sm mx-auto">
+              <h3 className="text-2xl font-black text-white tracking-wide uppercase font-display flex items-center justify-center gap-2">
+                <RefreshCw className="h-5 w-5 text-[#5c4cf4] animate-spin" />
+                Searching for users...
+              </h3>
+              <p className="text-gray-400 text-sm leading-relaxed font-medium px-4">
+                Scanning the globe for the perfect match. Please hold on while we connect you to an available user.
               </p>
-            ) : (
-              <p className="text-gray-400 text-xs uppercase tracking-widest font-bold">
-                Sourcing connections globally
-              </p>
-            )}
-          </div>
+            </div>
+            
+            <div className="space-y-1 text-center min-h-[24px]">
+              {selectedInterests.length > 0 && (
+                <p className="text-[#5c4cf4] text-xs font-bold uppercase tracking-widest bg-[#5c4cf4]/10 inline-block px-3 py-1.5 rounded-full border border-[#5c4cf4]/20">
+                  {selectedInterests.map(t => `#${t}`).join("  ")}
+                </p>
+              )}
+            </div>
 
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={() => setSessionStatus("idle")}
-            className="rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:text-white hover:bg-white/10 hover:border-rose-500/30 px-6 py-2.5 text-xs font-semibold cursor-pointer relative z-10 transition-colors"
-            id="btn-cancel-search"
-          >
-            Cancel Search
-          </motion.button>
-        </div>
-      )}
+            <button
+              onClick={() => {
+                cleanupWebRTC();
+                leaveMatchmakingQueue(myPeerId).catch(err => console.error("Error leaving lobby on cancel:", err));
+                setSessionStatus("idle");
+              }}
+              className="text-gray-400 hover:text-white text-sm font-bold transition-all cursor-pointer px-6 py-2.5 rounded-full hover:bg-white/5 border border-transparent hover:border-white/10 uppercase tracking-wider"
+              id="btn-cancel-search"
+            >
+              Cancel Search
+            </button>
+          </div>
+        );
+      })()}
 
       {/* 3. CONNECTED State - Live Split Video Call & Real-time Text chat */}
       {sessionStatus === "connected" && partner && (
@@ -1689,26 +1880,46 @@ export default function VideoChatArea() {
                     <AlertOctagon className="h-3 w-3 text-rose-500 animate-pulse" />
                     <span>Report</span>
                   </button>
+
+                  <button
+                    onClick={() => {
+                      setBlockSubmitting(false);
+                      setBlockSuccess(false);
+                      setBlockOpen(true);
+                    }}
+                    className="flex items-center gap-1.5 bg-black/60 backdrop-blur-md border border-white/5 hover:border-rose-500/30 text-[10px] font-bold text-gray-300 hover:text-rose-400 px-3 py-1 rounded-full uppercase tracking-wider transition-all cursor-pointer hover:bg-rose-950/40"
+                    title="Block this user and prevent matching ever again"
+                    id="btn-block-overlay"
+                  >
+                    <Ban className="h-3 w-3 text-rose-500 animate-pulse" />
+                    <span>Block</span>
+                  </button>
                 </div>
 
-                {/* Floating Quick Reaction Bar */}
-                <div className="absolute top-4 right-4 z-30 flex items-center gap-1 bg-black/50 backdrop-blur-md px-2.5 py-1.5 rounded-full border border-white/10 shadow-lg" id="quick-reactions-bar">
-                  <span className="text-[10px] text-gray-400 font-bold mr-1.5 select-none hidden sm:inline pl-1">React:</span>
-                  {["👋", "🔥", "😂", "❤️", "👍", "🎉", "😮"].map((emoji) => (
-                    <button
-                      key={emoji}
-                      onClick={() => sendEmojiReaction(emoji)}
-                      className="text-lg hover:scale-130 active:scale-95 transition-all duration-150 p-1 cursor-pointer hover:bg-white/10 rounded-full"
-                      title={`Send ${emoji} reaction`}
-                      id={`btn-react-${emoji}`}
-                    >
-                      {emoji}
-                    </button>
-                  ))}
-                </div>
+                 {/* Floating Quick Reaction Bar */}
+                 <div className="absolute top-4 right-4 z-30 flex items-center gap-1 bg-black/50 backdrop-blur-md px-2.5 py-1.5 rounded-full border border-white/10 shadow-lg" id="quick-reactions-bar">
+                   <span className="text-[10px] text-gray-400 font-bold mr-1.5 select-none hidden sm:inline pl-1">React:</span>
+                   {["👋", "🔥", "🚀", "❤️"].map((emoji) => (
+                     <button
+                       key={emoji}
+                       onClick={() => sendEmojiReaction(emoji)}
+                       className="text-lg hover:scale-130 active:scale-95 transition-all duration-150 p-1 cursor-pointer hover:bg-white/10 rounded-full"
+                       title={`Send ${emoji} reaction`}
+                       id={`btn-react-${emoji}`}
+                     >
+                       {emoji}
+                     </button>
+                   ))}
+                 </div>
 
                 {/* Match Info Panel - Positioned in the bottom-left */}
                 <div className="absolute bottom-4 left-4 max-w-[calc(100%-140px-2rem)] sm:max-w-md bg-black/60 backdrop-blur-md rounded-2xl p-4 border border-white/10 shadow-lg z-10">
+                  {matchReason && (
+                    <div className="mb-3 px-2.5 py-1.5 bg-gradient-to-r from-amber-500/20 to-purple-600/20 border border-amber-500/30 rounded-xl flex items-center gap-1.5 animate-pulse">
+                      <Sparkles className="h-3.5 w-3.5 text-amber-400 shrink-0" />
+                      <span className="text-[10px] font-extrabold text-amber-200 tracking-wide line-clamp-1">AI Curated: {matchReason}</span>
+                    </div>
+                  )}
                   <div className="flex items-center justify-between gap-4">
                     <div>
                       <h4 className="text-white font-bold text-base font-display flex items-center gap-2">
@@ -1813,7 +2024,9 @@ export default function VideoChatArea() {
               </AnimatePresence>
 
               {/* Card 2: User Stream (Actual Camera - SMALL SCREEN Overlay) */}
-              <div className="absolute bottom-4 right-4 w-32 h-44 sm:w-40 sm:h-52 rounded-2xl overflow-hidden bg-[#171717]/95 border border-white/20 shadow-2xl z-20 transition-all hover:scale-105">
+              <div className={`absolute bottom-4 rounded-2xl overflow-hidden bg-[#171717]/95 border border-white/20 shadow-2xl z-20 transition-all duration-300 hover:scale-105 w-32 h-44 sm:w-40 sm:h-52 ${
+                theaterMode && isChatVisible ? "right-4 lg:right-[356px]" : "right-4"
+              }`}>
                 
                 {isVideoEnabled && localStream ? (
                   <>
@@ -1936,8 +2149,8 @@ export default function VideoChatArea() {
             {/* Action Tray controls underneath screens */}
             <div className="rounded-2xl glass-panel px-6 py-4 border border-white/10 flex flex-wrap items-center justify-between gap-4">
               
-              {/* Left tray: Report */}
-              <div>
+              {/* Left tray: Report & Block */}
+              <div className="flex items-center gap-4">
                 <button
                   onClick={() => {
                     setReportReason("harassment");
@@ -1951,6 +2164,22 @@ export default function VideoChatArea() {
                 >
                   <AlertOctagon className="h-4 w-4" />
                   Report User
+                </button>
+
+                <div className="h-4 w-[1px] bg-white/10 hidden sm:block" />
+
+                <button
+                  onClick={() => {
+                    setBlockSubmitting(false);
+                    setBlockSuccess(false);
+                    setBlockOpen(true);
+                  }}
+                  className="flex items-center gap-1.5 text-xs font-bold text-gray-400 hover:text-rose-500 transition-colors cursor-pointer"
+                  id="btn-block-match"
+                  title="Block this user and skip immediately"
+                >
+                  <Ban className="h-4 w-4 text-rose-500/80" />
+                  Block User
                 </button>
               </div>
 
@@ -1977,6 +2206,21 @@ export default function VideoChatArea() {
                   <Maximize2 className="h-4 w-4" />
                   <span>{theaterMode ? "Normal Screen" : "Theater Mode"}</span>
                 </button>
+
+                {theaterMode && (
+                  <button
+                    onClick={() => setIsChatVisible(!isChatVisible)}
+                    className={`flex items-center gap-1.5 rounded-xl border px-4 py-2.5 text-xs font-semibold transition-all cursor-pointer ${
+                      isChatVisible 
+                        ? "bg-indigo-600 border-indigo-400 text-white shadow-md shadow-indigo-500/20" 
+                        : "bg-white/5 border-white/10 text-gray-300 hover:bg-white/10"
+                    }`}
+                    id="btn-toggle-chat-overlay"
+                  >
+                    {isChatVisible ? <MessageSquareOff className="h-4 w-4" /> : <MessageSquare className="h-4 w-4" />}
+                    <span>{isChatVisible ? "Hide Chat" : "Show Chat"}</span>
+                  </button>
+                )}
 
                 <button
                   onClick={() => setIsViewportFullscreen(!isViewportFullscreen)}
@@ -2077,7 +2321,11 @@ export default function VideoChatArea() {
           </div>
 
           {/* Right panel (Text Message Chat overlay container) - Column Span based on Theater Mode */}
-          <div className={`flex flex-col rounded-[28px] glass-panel border border-white/10 shadow-2xl relative overflow-hidden bg-[#0d0d0d]/50 transition-all duration-300 ${theaterMode ? "lg:col-span-12 h-[380px]" : "lg:col-span-4 h-[535px]"}`}>
+          <div className={`flex flex-col rounded-[28px] glass-panel border border-white/10 shadow-2xl relative overflow-hidden bg-[#0d0d0d]/50 transition-all duration-300 ${
+            theaterMode 
+              ? `${isChatVisible ? "lg:absolute lg:top-0 lg:right-0 lg:h-[650px] lg:w-80 lg:z-30 lg:bg-black/85 lg:backdrop-blur-md lg:rounded-r-[28px] lg:rounded-l-none lg:border-l lg:border-white/10 lg:shadow-2xl flex" : "hidden lg:hidden"}`
+              : "lg:col-span-4 h-[535px] flex"
+          }`}>
             
             {/* Chat header */}
             <div className="px-5 py-4 border-b border-white/5 flex items-center justify-between bg-black/15">
@@ -2327,273 +2575,101 @@ export default function VideoChatArea() {
         )}
       </AnimatePresence>
 
-      {/* Premium Subscription Modal */}
+      {/* Block dialog popup */}
       <AnimatePresence>
-        {premiumModalOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center px-4 bg-black/75 backdrop-blur-sm overflow-y-auto py-10">
+        {blockOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center px-4 bg-black/75 backdrop-blur-xs">
             <motion.div
-              initial={{ scale: 0.95, opacity: 0, y: 20 }}
+              initial={{ scale: 0.95, opacity: 0, y: 15 }}
               animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.95, opacity: 0, y: 20 }}
-              className="w-full max-w-2xl rounded-3xl bg-[#171717] border border-white/10 shadow-2xl relative overflow-hidden my-auto"
+              exit={{ scale: 0.95, opacity: 0, y: 15 }}
+              className="w-full max-w-md rounded-[28px] glass-panel-heavy p-6 border border-white/15 shadow-2xl relative"
             >
-              {/* Top Banner decoration */}
-              <div className="absolute top-0 left-0 right-0 h-2 bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-600" />
-              
               {/* Close Button */}
               <button
-                onClick={handleClosePremiumModal}
-                className="absolute top-5 right-5 text-gray-400 hover:text-white bg-white/5 hover:bg-white/10 p-2 rounded-full transition-all cursor-pointer z-10"
-                id="btn-close-premium-modal"
+                onClick={() => !blockSubmitting && !blockSuccess && setBlockOpen(false)}
+                className="absolute top-4 right-4 text-gray-400 hover:text-white transition-colors p-1 rounded-full hover:bg-white/5 cursor-pointer"
+                disabled={blockSubmitting || blockSuccess}
               >
-                <X className="h-5 w-5" />
+                <X className="h-4 w-4" />
               </button>
 
-              <div className="grid grid-cols-1 md:grid-cols-12">
-                {/* Left panel: Features list */}
-                <div className="md:col-span-5 bg-[#0f0f0f] p-6 md:p-8 flex flex-col justify-between border-r border-white/5">
-                  <div className="space-y-6">
-                    <div className="flex items-center gap-2.5">
-                      <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-500/10 text-amber-400 shadow-md">
-                        <Crown className="h-5 w-5 fill-amber-500/10" />
-                      </div>
-                      <span className="font-display font-black text-white text-base tracking-wide uppercase">
-                        VIP Access
-                      </span>
-                    </div>
-
-                    <div className="space-y-4 pt-2">
-                      <h4 className="text-gray-300 text-xs font-bold uppercase tracking-wider">
-                        Unlocked Perks:
-                      </h4>
-                      
-                      <div className="space-y-3">
-                        <div className="flex items-start gap-2.5">
-                          <div className="h-5 w-5 rounded-full bg-amber-500/10 text-amber-400 flex items-center justify-center shrink-0 mt-0.5">
-                            <Check className="h-3 w-3" />
-                          </div>
-                          <p className="text-gray-300 text-xs font-medium leading-relaxed">
-                            <strong className="text-white">Gender Filter</strong>: Match 100% girls only or boys only
-                          </p>
-                        </div>
-
-                        <div className="flex items-start gap-2.5">
-                          <div className="h-5 w-5 rounded-full bg-amber-500/10 text-amber-400 flex items-center justify-center shrink-0 mt-0.5">
-                            <Check className="h-3 w-3" />
-                          </div>
-                          <p className="text-gray-300 text-xs font-medium leading-relaxed">
-                            <strong className="text-white">Unlimited Gifts</strong>: Express appreciation continuously
-                          </p>
-                        </div>
-
-                        <div className="flex items-start gap-2.5">
-                          <div className="h-5 w-5 rounded-full bg-amber-500/10 text-amber-400 flex items-center justify-center shrink-0 mt-0.5">
-                            <Check className="h-3 w-3" />
-                          </div>
-                          <p className="text-gray-300 text-xs font-medium leading-relaxed">
-                            <strong className="text-white">VIP Badge</strong>: Display a glowing gold crown in Live Chats
-                          </p>
-                        </div>
-
-                        <div className="flex items-start gap-2.5">
-                          <div className="h-5 w-5 rounded-full bg-amber-500/10 text-amber-400 flex items-center justify-center shrink-0 mt-0.5">
-                            <Check className="h-3 w-3" />
-                          </div>
-                          <p className="text-gray-300 text-xs font-medium leading-relaxed">
-                            <strong className="text-white">HD Video Quality</strong>: Peerless, crystal-clear cam feeds
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="mt-8 pt-4 border-t border-white/5">
-                    <p className="text-[10px] text-gray-500 leading-relaxed">
-                      Swiply billing is secure. Cancel anytime from your account settings. Subscriptions renew automatically.
+              {blockSubmitting ? (
+                <div className="space-y-6 py-8 text-center">
+                  <div className="h-14 w-14 border-4 border-rose-500 border-t-transparent rounded-full animate-spin mx-auto" />
+                  <div className="space-y-2">
+                    <h4 className="text-white text-base font-bold font-display">Processing Block Request</h4>
+                    <p className="text-gray-400 text-xs leading-relaxed max-w-xs mx-auto animate-pulse">
+                      Updating matchmaking criteria, logging security parameters, and blacklisting user...
                     </p>
                   </div>
                 </div>
-
-                {/* Right panel: Checkout / Payment */}
-                <div className="md:col-span-7 p-6 md:p-8 flex flex-col justify-between">
-                  {!checkoutSuccess ? (
-                    <div className="space-y-6">
-                      <div>
-                        <h3 className="text-white text-xl font-bold font-display tracking-tight">
-                          Select Your VIP Plan
-                        </h3>
-                        <p className="text-gray-400 text-xs">
-                          Unlock girls only or boys only talk instantly.
-                        </p>
-                      </div>
-
-                      {/* Pricing Toggles */}
-                      <div className="grid grid-cols-2 gap-3">
-                        <button
-                          type="button"
-                          onClick={() => setUpgradePlan("monthly")}
-                          className={`p-4 rounded-2xl border text-left transition-all cursor-pointer relative ${
-                            upgradePlan === "monthly"
-                              ? "bg-amber-500/10 border-amber-500/50 shadow-lg"
-                              : "bg-white/[0.02] border-white/5 hover:bg-white/5"
-                          }`}
-                        >
-                          <span className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider">
-                            Monthly
-                          </span>
-                          <span className="block text-white text-lg font-black mt-1">
-                            ₹299<span className="text-xs font-normal text-gray-400">/mo</span>
-                          </span>
-                          <span className="block text-[9px] text-gray-500 mt-1">
-                            Billed monthly
-                          </span>
-                          {upgradePlan === "monthly" && (
-                            <span className="absolute top-3 right-3 h-4.5 w-4.5 rounded-full bg-amber-500 text-black flex items-center justify-center text-[10px] font-bold">
-                              ✓
-                            </span>
-                          )}
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={() => setUpgradePlan("yearly")}
-                          className={`p-4 rounded-2xl border text-left transition-all cursor-pointer relative ${
-                            upgradePlan === "yearly"
-                              ? "bg-amber-500/10 border-amber-500/50 shadow-lg"
-                              : "bg-white/[0.02] border-white/5 hover:bg-white/5"
-                          }`}
-                        >
-                          <span className="absolute -top-2 right-3 bg-gradient-to-r from-amber-500 to-yellow-500 text-black text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full shadow-md">
-                            Save 45%
-                          </span>
-                          <span className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mt-0.5">
-                            Yearly
-                          </span>
-                          <span className="block text-white text-lg font-black mt-1">
-                            ₹1,999<span className="text-xs font-normal text-gray-400">/yr</span>
-                          </span>
-                          <span className="block text-[9px] text-emerald-400 font-semibold mt-1">
-                            ₹166 / month equivalent
-                          </span>
-                          {upgradePlan === "yearly" && (
-                            <span className="absolute top-3 right-3 h-4.5 w-4.5 rounded-full bg-amber-500 text-black flex items-center justify-center text-[10px] font-bold">
-                              ✓
-                            </span>
-                          )}
-                        </button>
-                      </div>
-
-                      {/* Payment Form */}
-                      <form onSubmit={handleCheckoutSubmit} className="space-y-4">
-                        <div className="flex items-center gap-2 text-xs font-bold text-gray-400 uppercase tracking-wider border-b border-white/5 pb-1">
-                          <CreditCard className="h-4 w-4 text-amber-500" />
-                          <span>Secure PayU India Gateway</span>
-                        </div>
-
-                        {paymentError && (
-                          <div className="bg-rose-500/10 border border-rose-500/20 text-rose-400 p-3 rounded-xl text-xs font-medium">
-                            ⚠️ {paymentError}
-                          </div>
-                        )}
-
-                        <div className="space-y-3">
-                          <div>
-                            <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">
-                              First Name
-                            </label>
-                            <input
-                              type="text"
-                              required
-                              placeholder="Billing First Name"
-                              value={billingName}
-                              onChange={(e) => setBillingName(e.target.value)}
-                              className="w-full rounded-xl bg-white/5 border border-white/10 px-4 py-2.5 text-xs text-white placeholder-gray-600 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-all"
-                            />
-                          </div>
-
-                          <div>
-                            <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">
-                              Email Address
-                            </label>
-                            <input
-                              type="email"
-                              required
-                              placeholder="billing@example.com"
-                              value={billingEmail}
-                              onChange={(e) => setBillingEmail(e.target.value)}
-                              className="w-full rounded-xl bg-white/5 border border-white/10 px-4 py-2.5 text-xs text-white placeholder-gray-600 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-all"
-                            />
-                          </div>
-
-                          <div>
-                            <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">
-                              Mobile Number (10 Digits)
-                            </label>
-                            <input
-                              type="tel"
-                              required
-                              pattern="[0-9]{10}"
-                              placeholder="e.g. 9876543210"
-                              value={billingPhone}
-                              onChange={(e) => setBillingPhone(e.target.value.replace(/[^0-9]/g, ''))}
-                              className="w-full rounded-xl bg-white/5 border border-white/10 px-4 py-2.5 text-xs text-white placeholder-gray-600 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-all"
-                            />
-                          </div>
-                        </div>
-
-                        <button
-                          type="submit"
-                          disabled={checkoutLoading}
-                          className="w-full mt-4 flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-amber-500 to-yellow-600 text-white font-bold text-sm py-3.5 shadow-xl shadow-amber-500/10 hover:shadow-amber-500/25 transition-all hover:scale-101 cursor-pointer disabled:opacity-50"
-                          id="btn-submit-premium-payment"
-                        >
-                          {checkoutLoading ? (
-                            <div className="flex items-center gap-2">
-                              <RefreshCw className="h-4 w-4 animate-spin" />
-                              <span>Redirecting to PayU...</span>
-                            </div>
-                          ) : (
-                            <div className="flex items-center gap-2">
-                              <ShieldCheck className="h-4.5 w-4.5" />
-                              <span>Proceed to PayU India Secure Pay</span>
-                            </div>
-                          )}
-                        </button>
-                      </form>
+              ) : !blockSuccess ? (
+                <div className="space-y-5">
+                  <div className="flex items-center gap-3">
+                    <div className="h-10 w-10 rounded-xl bg-rose-500/20 text-rose-500 flex items-center justify-center shrink-0">
+                      <Ban className="h-5.5 w-5.5 animate-pulse" />
                     </div>
-                  ) : (
-                    <div className="flex flex-col items-center justify-center py-12 text-center space-y-6">
-                      <div className="h-16 w-16 rounded-full bg-amber-500/10 text-amber-400 flex items-center justify-center animate-bounce shadow-lg shadow-amber-500/10">
-                        <Crown className="h-9 w-9 fill-amber-500/15" />
-                      </div>
-                      
-                      <div className="space-y-2">
-                        <h3 className="text-white text-2xl font-black font-display tracking-tight">
-                          Congratulations VIP!
-                        </h3>
-                        <p className="text-gray-300 text-xs max-w-sm mx-auto leading-relaxed">
-                          Your premium subscription is now active! You have unlocked the girls & boys only filters, golden badge status, and unlimited gifts.
-                        </p>
-                      </div>
-
-                      <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-2xl p-4 w-full text-center">
-                        <p className="text-emerald-400 text-xs font-semibold">
-                          ✓ Payment Authorized & VIP Perks Enabled Successfully!
-                        </p>
-                      </div>
-
-                      <button
-                        onClick={handleClosePremiumModal}
-                        className="rounded-2xl bg-white text-black font-bold text-sm px-8 py-3 hover:bg-gray-100 transition-all cursor-pointer shadow-md"
-                        id="btn-complete-premium-onboarding"
-                      >
-                        Let's Talk!
-                      </button>
+                    <div>
+                      <h4 className="text-white text-base font-bold font-display">Block {partner.name}?</h4>
+                      <p className="text-gray-400 text-2xs">This action will permanently prevent matching again.</p>
                     </div>
-                  )}
+                  </div>
+
+                  <div className="border-t border-white/5 pt-1" />
+
+                  <p className="text-gray-300 text-xs leading-relaxed">
+                    Are you sure you want to block <span className="text-rose-400 font-bold">{partner.name}</span>? You will be disconnected instantly, and this user will be completely blacklisted from your account.
+                  </p>
+
+                  <div className="bg-rose-950/20 border border-rose-500/20 rounded-xl p-3 flex gap-2 items-start text-rose-300 text-[11px] leading-relaxed">
+                    <AlertOctagon className="h-4 w-4 shrink-0 mt-0.5 text-rose-400" />
+                    <span>This action is immediate. They will not be notified that they were blocked, and our moderation system will be logged.</span>
+                  </div>
+
+                  {/* Buttons */}
+                  <div className="grid grid-cols-2 gap-3 pt-2">
+                    <button
+                      type="button"
+                      onClick={() => setBlockOpen(false)}
+                      className="rounded-xl border border-white/10 bg-white/5 text-gray-300 hover:text-white hover:bg-white/10 py-2.5 text-xs font-semibold cursor-pointer transition-colors"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleBlockSubmit}
+                      className="rounded-xl bg-gradient-to-r from-rose-500 to-red-600 hover:from-rose-400 hover:to-red-500 text-white py-2.5 text-xs font-bold shadow-lg shadow-rose-500/20 cursor-pointer hover:scale-[1.01] transition-all"
+                    >
+                      Confirm Block
+                    </button>
+                  </div>
                 </div>
-              </div>
-
+              ) : (
+                <div className="space-y-5 py-2 text-center">
+                  <div className="h-14 w-14 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center mx-auto animate-bounce border border-emerald-500/30">
+                    <span className="text-2xl font-bold">✓</span>
+                  </div>
+                  <div className="space-y-2">
+                    <h4 className="text-white text-base font-bold font-display">User Blocked!</h4>
+                    <p className="text-gray-300 text-xs leading-relaxed max-w-sm mx-auto">
+                      <span className="text-rose-400 font-bold">{partner.name}</span> has been permanently blocked and added to your personal blacklist.
+                    </p>
+                    <p className="text-gray-400 text-2xs leading-relaxed max-w-xs mx-auto">
+                      We are now routing you to a new safe partner. Happy chatting!
+                    </p>
+                  </div>
+                  <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
+                    <motion.div 
+                      initial={{ width: "0%" }}
+                      animate={{ width: "100%" }}
+                      transition={{ duration: 2.5, ease: "linear" }}
+                      className="h-full bg-gradient-to-r from-emerald-500 to-sky-500"
+                    />
+                  </div>
+                  <p className="text-gray-500 text-[10px] animate-pulse">Sourcing next connection...</p>
+                </div>
+              )}
             </motion.div>
           </div>
         )}

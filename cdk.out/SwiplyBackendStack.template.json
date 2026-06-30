@@ -1,0 +1,737 @@
+{
+ "Resources": {
+  "SwiplyUserPoolD5096A63": {
+   "Type": "AWS::Cognito::UserPool",
+   "Properties": {
+    "AccountRecoverySetting": {
+     "RecoveryMechanisms": [
+      {
+       "Name": "verified_phone_number",
+       "Priority": 1
+      },
+      {
+       "Name": "verified_email",
+       "Priority": 2
+      }
+     ]
+    },
+    "AdminCreateUserConfig": {
+     "AllowAdminCreateUserOnly": false
+    },
+    "AutoVerifiedAttributes": [
+     "email"
+    ],
+    "EmailVerificationMessage": "The verification code to your new account is {####}",
+    "EmailVerificationSubject": "Verify your new account",
+    "SmsVerificationMessage": "The verification code to your new account is {####}",
+    "UserPoolName": "swiply-pool",
+    "UsernameAttributes": [
+     "email"
+    ],
+    "VerificationMessageTemplate": {
+     "DefaultEmailOption": "CONFIRM_WITH_CODE",
+     "EmailMessage": "The verification code to your new account is {####}",
+     "EmailSubject": "Verify your new account",
+     "SmsMessage": "The verification code to your new account is {####}"
+    }
+   },
+   "UpdateReplacePolicy": "Retain",
+   "DeletionPolicy": "Retain",
+   "Metadata": {
+    "aws:cdk:path": "SwiplyBackendStack/SwiplyUserPool/Resource"
+   }
+  },
+  "SwiplyUserPoolSwiplyCognitoDomainEDE79498": {
+   "Type": "AWS::Cognito::UserPoolDomain",
+   "Properties": {
+    "Domain": "swiply-auth-342344627930",
+    "UserPoolId": {
+     "Ref": "SwiplyUserPoolD5096A63"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "SwiplyBackendStack/SwiplyUserPool/SwiplyCognitoDomain/Resource"
+   }
+  },
+  "GoogleIdP776058BD": {
+   "Type": "AWS::Cognito::UserPoolIdentityProvider",
+   "Properties": {
+    "AttributeMapping": {
+     "email": "email",
+     "given_name": "given_name",
+     "family_name": "family_name",
+     "picture": "picture"
+    },
+    "ProviderDetails": {
+     "client_id": "client-id",
+     "client_secret": "client-secret",
+     "authorize_scopes": "profile email openid"
+    },
+    "ProviderName": "Google",
+    "ProviderType": "Google",
+    "UserPoolId": {
+     "Ref": "SwiplyUserPoolD5096A63"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "SwiplyBackendStack/GoogleIdP/Resource"
+   }
+  },
+  "SwiplyAppClient2D81C130": {
+   "Type": "AWS::Cognito::UserPoolClient",
+   "Properties": {
+    "AllowedOAuthFlows": [
+     "implicit",
+     "code"
+    ],
+    "AllowedOAuthFlowsUserPoolClient": true,
+    "AllowedOAuthScopes": [
+     "profile",
+     "phone",
+     "email",
+     "openid",
+     "aws.cognito.signin.user.admin"
+    ],
+    "CallbackURLs": [
+     "https://localhost:3000/"
+    ],
+    "GenerateSecret": false,
+    "LogoutURLs": [
+     "https://localhost:3000/"
+    ],
+    "SupportedIdentityProviders": [
+     "Google",
+     "COGNITO"
+    ],
+    "UserPoolId": {
+     "Ref": "SwiplyUserPoolD5096A63"
+    }
+   },
+   "DependsOn": [
+    "GoogleIdP776058BD"
+   ],
+   "Metadata": {
+    "aws:cdk:path": "SwiplyBackendStack/SwiplyAppClient/Resource"
+   }
+  },
+  "UsersTable9725E9C8": {
+   "Type": "AWS::DynamoDB::Table",
+   "Properties": {
+    "AttributeDefinitions": [
+     {
+      "AttributeName": "userId",
+      "AttributeType": "S"
+     }
+    ],
+    "BillingMode": "PAY_PER_REQUEST",
+    "KeySchema": [
+     {
+      "AttributeName": "userId",
+      "KeyType": "HASH"
+     }
+    ],
+    "TableName": "swiply_users"
+   },
+   "UpdateReplacePolicy": "Retain",
+   "DeletionPolicy": "Retain",
+   "Metadata": {
+    "aws:cdk:path": "SwiplyBackendStack/UsersTable/Resource"
+   }
+  },
+  "QueueTable4C3A1E0F": {
+   "Type": "AWS::DynamoDB::Table",
+   "Properties": {
+    "AttributeDefinitions": [
+     {
+      "AttributeName": "userId",
+      "AttributeType": "S"
+     }
+    ],
+    "BillingMode": "PAY_PER_REQUEST",
+    "KeySchema": [
+     {
+      "AttributeName": "userId",
+      "KeyType": "HASH"
+     }
+    ],
+    "TableName": "swiply_queue"
+   },
+   "UpdateReplacePolicy": "Retain",
+   "DeletionPolicy": "Retain",
+   "Metadata": {
+    "aws:cdk:path": "SwiplyBackendStack/QueueTable/Resource"
+   }
+  },
+  "RoomsTableA5C1D45B": {
+   "Type": "AWS::DynamoDB::Table",
+   "Properties": {
+    "AttributeDefinitions": [
+     {
+      "AttributeName": "roomId",
+      "AttributeType": "S"
+     }
+    ],
+    "BillingMode": "PAY_PER_REQUEST",
+    "KeySchema": [
+     {
+      "AttributeName": "roomId",
+      "KeyType": "HASH"
+     }
+    ],
+    "TableName": "swiply_rooms"
+   },
+   "UpdateReplacePolicy": "Retain",
+   "DeletionPolicy": "Retain",
+   "Metadata": {
+    "aws:cdk:path": "SwiplyBackendStack/RoomsTable/Resource"
+   }
+  },
+  "WebSocketHandlerServiceRole79B07D0E": {
+   "Type": "AWS::IAM::Role",
+   "Properties": {
+    "AssumeRolePolicyDocument": {
+     "Statement": [
+      {
+       "Action": "sts:AssumeRole",
+       "Effect": "Allow",
+       "Principal": {
+        "Service": "lambda.amazonaws.com"
+       }
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "ManagedPolicyArns": [
+     {
+      "Fn::Join": [
+       "",
+       [
+        "arn:",
+        {
+         "Ref": "AWS::Partition"
+        },
+        ":iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+       ]
+      ]
+     }
+    ]
+   },
+   "Metadata": {
+    "aws:cdk:path": "SwiplyBackendStack/WebSocketHandler/ServiceRole/Resource"
+   }
+  },
+  "WebSocketHandlerServiceRoleDefaultPolicyF180304B": {
+   "Type": "AWS::IAM::Policy",
+   "Properties": {
+    "PolicyDocument": {
+     "Statement": [
+      {
+       "Action": [
+        "dynamodb:BatchGetItem",
+        "dynamodb:Query",
+        "dynamodb:GetItem",
+        "dynamodb:Scan",
+        "dynamodb:ConditionCheckItem",
+        "dynamodb:BatchWriteItem",
+        "dynamodb:PutItem",
+        "dynamodb:UpdateItem",
+        "dynamodb:DeleteItem",
+        "dynamodb:DescribeTable"
+       ],
+       "Effect": "Allow",
+       "Resource": [
+        {
+         "Fn::GetAtt": [
+          "UsersTable9725E9C8",
+          "Arn"
+         ]
+        }
+       ]
+      },
+      {
+       "Action": [
+        "dynamodb:GetRecords",
+        "dynamodb:GetShardIterator"
+       ],
+       "Effect": "Allow",
+       "Resource": [
+        {
+         "Fn::GetAtt": [
+          "UsersTable9725E9C8",
+          "Arn"
+         ]
+        }
+       ]
+      },
+      {
+       "Action": [
+        "dynamodb:BatchGetItem",
+        "dynamodb:Query",
+        "dynamodb:GetItem",
+        "dynamodb:Scan",
+        "dynamodb:ConditionCheckItem",
+        "dynamodb:BatchWriteItem",
+        "dynamodb:PutItem",
+        "dynamodb:UpdateItem",
+        "dynamodb:DeleteItem",
+        "dynamodb:DescribeTable"
+       ],
+       "Effect": "Allow",
+       "Resource": [
+        {
+         "Fn::GetAtt": [
+          "QueueTable4C3A1E0F",
+          "Arn"
+         ]
+        }
+       ]
+      },
+      {
+       "Action": [
+        "dynamodb:GetRecords",
+        "dynamodb:GetShardIterator"
+       ],
+       "Effect": "Allow",
+       "Resource": [
+        {
+         "Fn::GetAtt": [
+          "QueueTable4C3A1E0F",
+          "Arn"
+         ]
+        }
+       ]
+      },
+      {
+       "Action": [
+        "dynamodb:BatchGetItem",
+        "dynamodb:Query",
+        "dynamodb:GetItem",
+        "dynamodb:Scan",
+        "dynamodb:ConditionCheckItem",
+        "dynamodb:BatchWriteItem",
+        "dynamodb:PutItem",
+        "dynamodb:UpdateItem",
+        "dynamodb:DeleteItem",
+        "dynamodb:DescribeTable"
+       ],
+       "Effect": "Allow",
+       "Resource": [
+        {
+         "Fn::GetAtt": [
+          "RoomsTableA5C1D45B",
+          "Arn"
+         ]
+        }
+       ]
+      },
+      {
+       "Action": [
+        "dynamodb:GetRecords",
+        "dynamodb:GetShardIterator"
+       ],
+       "Effect": "Allow",
+       "Resource": [
+        {
+         "Fn::GetAtt": [
+          "RoomsTableA5C1D45B",
+          "Arn"
+         ]
+        }
+       ]
+      },
+      {
+       "Action": [
+        "chime:CreateMeeting",
+        "chime:DeleteMeeting",
+        "chime:CreateAttendee",
+        "chime:DeleteAttendee",
+        "chime:GetMeeting",
+        "chime:GetAttendee"
+       ],
+       "Effect": "Allow",
+       "Resource": "*"
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "PolicyName": "WebSocketHandlerServiceRoleDefaultPolicyF180304B",
+    "Roles": [
+     {
+      "Ref": "WebSocketHandlerServiceRole79B07D0E"
+     }
+    ]
+   },
+   "Metadata": {
+    "aws:cdk:path": "SwiplyBackendStack/WebSocketHandler/ServiceRole/DefaultPolicy/Resource"
+   }
+  },
+  "WebSocketHandler47C0AA1A": {
+   "Type": "AWS::Lambda::Function",
+   "Properties": {
+    "Code": {
+     "S3Bucket": "cdk-hnb659fds-assets-342344627930-us-east-1",
+     "S3Key": "99d30b96eb69d3144d02a4bf1328f064ae0f7b8558d3c018f76a8c4b2ebadaea.zip"
+    },
+    "Environment": {
+     "Variables": {
+      "USERS_TABLE": {
+       "Ref": "UsersTable9725E9C8"
+      },
+      "QUEUE_TABLE": {
+       "Ref": "QueueTable4C3A1E0F"
+      },
+      "ROOMS_TABLE": {
+       "Ref": "RoomsTableA5C1D45B"
+      }
+     }
+    },
+    "Handler": "websocket.handler",
+    "Role": {
+     "Fn::GetAtt": [
+      "WebSocketHandlerServiceRole79B07D0E",
+      "Arn"
+     ]
+    },
+    "Runtime": "nodejs20.x"
+   },
+   "DependsOn": [
+    "WebSocketHandlerServiceRoleDefaultPolicyF180304B",
+    "WebSocketHandlerServiceRole79B07D0E"
+   ],
+   "Metadata": {
+    "aws:cdk:path": "SwiplyBackendStack/WebSocketHandler/Resource",
+    "aws:asset:path": "asset.99d30b96eb69d3144d02a4bf1328f064ae0f7b8558d3c018f76a8c4b2ebadaea",
+    "aws:asset:is-bundled": false,
+    "aws:asset:property": "Code"
+   }
+  },
+  "SwiplyWebSocketApiA38B9853": {
+   "Type": "AWS::ApiGatewayV2::Api",
+   "Properties": {
+    "Name": "SwiplyWebSocketApi",
+    "ProtocolType": "WEBSOCKET",
+    "RouteSelectionExpression": "$request.body.action"
+   },
+   "Metadata": {
+    "aws:cdk:path": "SwiplyBackendStack/SwiplyWebSocketApi/Resource"
+   }
+  },
+  "SwiplyWebSocketApiconnectRouteConnectIntegrationPermission7208E9C4": {
+   "Type": "AWS::Lambda::Permission",
+   "Properties": {
+    "Action": "lambda:InvokeFunction",
+    "FunctionName": {
+     "Fn::GetAtt": [
+      "WebSocketHandler47C0AA1A",
+      "Arn"
+     ]
+    },
+    "Principal": "apigateway.amazonaws.com",
+    "SourceArn": {
+     "Fn::Join": [
+      "",
+      [
+       "arn:",
+       {
+        "Ref": "AWS::Partition"
+       },
+       ":execute-api:us-east-1:342344627930:",
+       {
+        "Ref": "SwiplyWebSocketApiA38B9853"
+       },
+       "/*$connect"
+      ]
+     ]
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "SwiplyBackendStack/SwiplyWebSocketApi/$connect-Route/ConnectIntegration-Permission"
+   }
+  },
+  "SwiplyWebSocketApiconnectRouteConnectIntegration8B2C0187": {
+   "Type": "AWS::ApiGatewayV2::Integration",
+   "Properties": {
+    "ApiId": {
+     "Ref": "SwiplyWebSocketApiA38B9853"
+    },
+    "IntegrationType": "AWS_PROXY",
+    "IntegrationUri": {
+     "Fn::Join": [
+      "",
+      [
+       "arn:",
+       {
+        "Ref": "AWS::Partition"
+       },
+       ":apigateway:us-east-1:lambda:path/2015-03-31/functions/",
+       {
+        "Fn::GetAtt": [
+         "WebSocketHandler47C0AA1A",
+         "Arn"
+        ]
+       },
+       "/invocations"
+      ]
+     ]
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "SwiplyBackendStack/SwiplyWebSocketApi/$connect-Route/ConnectIntegration/Resource"
+   }
+  },
+  "SwiplyWebSocketApiconnectRoute87B69D33": {
+   "Type": "AWS::ApiGatewayV2::Route",
+   "Properties": {
+    "ApiId": {
+     "Ref": "SwiplyWebSocketApiA38B9853"
+    },
+    "AuthorizationType": "NONE",
+    "RouteKey": "$connect",
+    "Target": {
+     "Fn::Join": [
+      "",
+      [
+       "integrations/",
+       {
+        "Ref": "SwiplyWebSocketApiconnectRouteConnectIntegration8B2C0187"
+       }
+      ]
+     ]
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "SwiplyBackendStack/SwiplyWebSocketApi/$connect-Route/Resource"
+   }
+  },
+  "SwiplyWebSocketApidisconnectRouteDisconnectIntegrationPermission20C14BEE": {
+   "Type": "AWS::Lambda::Permission",
+   "Properties": {
+    "Action": "lambda:InvokeFunction",
+    "FunctionName": {
+     "Fn::GetAtt": [
+      "WebSocketHandler47C0AA1A",
+      "Arn"
+     ]
+    },
+    "Principal": "apigateway.amazonaws.com",
+    "SourceArn": {
+     "Fn::Join": [
+      "",
+      [
+       "arn:",
+       {
+        "Ref": "AWS::Partition"
+       },
+       ":execute-api:us-east-1:342344627930:",
+       {
+        "Ref": "SwiplyWebSocketApiA38B9853"
+       },
+       "/*$disconnect"
+      ]
+     ]
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "SwiplyBackendStack/SwiplyWebSocketApi/$disconnect-Route/DisconnectIntegration-Permission"
+   }
+  },
+  "SwiplyWebSocketApidisconnectRouteDisconnectIntegrationE685BF80": {
+   "Type": "AWS::ApiGatewayV2::Integration",
+   "Properties": {
+    "ApiId": {
+     "Ref": "SwiplyWebSocketApiA38B9853"
+    },
+    "IntegrationType": "AWS_PROXY",
+    "IntegrationUri": {
+     "Fn::Join": [
+      "",
+      [
+       "arn:",
+       {
+        "Ref": "AWS::Partition"
+       },
+       ":apigateway:us-east-1:lambda:path/2015-03-31/functions/",
+       {
+        "Fn::GetAtt": [
+         "WebSocketHandler47C0AA1A",
+         "Arn"
+        ]
+       },
+       "/invocations"
+      ]
+     ]
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "SwiplyBackendStack/SwiplyWebSocketApi/$disconnect-Route/DisconnectIntegration/Resource"
+   }
+  },
+  "SwiplyWebSocketApidisconnectRoute34DA77BB": {
+   "Type": "AWS::ApiGatewayV2::Route",
+   "Properties": {
+    "ApiId": {
+     "Ref": "SwiplyWebSocketApiA38B9853"
+    },
+    "AuthorizationType": "NONE",
+    "RouteKey": "$disconnect",
+    "Target": {
+     "Fn::Join": [
+      "",
+      [
+       "integrations/",
+       {
+        "Ref": "SwiplyWebSocketApidisconnectRouteDisconnectIntegrationE685BF80"
+       }
+      ]
+     ]
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "SwiplyBackendStack/SwiplyWebSocketApi/$disconnect-Route/Resource"
+   }
+  },
+  "SwiplyWebSocketApidefaultRouteDefaultIntegrationPermission715F63D7": {
+   "Type": "AWS::Lambda::Permission",
+   "Properties": {
+    "Action": "lambda:InvokeFunction",
+    "FunctionName": {
+     "Fn::GetAtt": [
+      "WebSocketHandler47C0AA1A",
+      "Arn"
+     ]
+    },
+    "Principal": "apigateway.amazonaws.com",
+    "SourceArn": {
+     "Fn::Join": [
+      "",
+      [
+       "arn:",
+       {
+        "Ref": "AWS::Partition"
+       },
+       ":execute-api:us-east-1:342344627930:",
+       {
+        "Ref": "SwiplyWebSocketApiA38B9853"
+       },
+       "/*$default"
+      ]
+     ]
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "SwiplyBackendStack/SwiplyWebSocketApi/$default-Route/DefaultIntegration-Permission"
+   }
+  },
+  "SwiplyWebSocketApidefaultRouteDefaultIntegration4D78EDB0": {
+   "Type": "AWS::ApiGatewayV2::Integration",
+   "Properties": {
+    "ApiId": {
+     "Ref": "SwiplyWebSocketApiA38B9853"
+    },
+    "IntegrationType": "AWS_PROXY",
+    "IntegrationUri": {
+     "Fn::Join": [
+      "",
+      [
+       "arn:",
+       {
+        "Ref": "AWS::Partition"
+       },
+       ":apigateway:us-east-1:lambda:path/2015-03-31/functions/",
+       {
+        "Fn::GetAtt": [
+         "WebSocketHandler47C0AA1A",
+         "Arn"
+        ]
+       },
+       "/invocations"
+      ]
+     ]
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "SwiplyBackendStack/SwiplyWebSocketApi/$default-Route/DefaultIntegration/Resource"
+   }
+  },
+  "SwiplyWebSocketApidefaultRoute43C980AD": {
+   "Type": "AWS::ApiGatewayV2::Route",
+   "Properties": {
+    "ApiId": {
+     "Ref": "SwiplyWebSocketApiA38B9853"
+    },
+    "AuthorizationType": "NONE",
+    "RouteKey": "$default",
+    "Target": {
+     "Fn::Join": [
+      "",
+      [
+       "integrations/",
+       {
+        "Ref": "SwiplyWebSocketApidefaultRouteDefaultIntegration4D78EDB0"
+       }
+      ]
+     ]
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "SwiplyBackendStack/SwiplyWebSocketApi/$default-Route/Resource"
+   }
+  },
+  "ProductionStage7C67E35B": {
+   "Type": "AWS::ApiGatewayV2::Stage",
+   "Properties": {
+    "ApiId": {
+     "Ref": "SwiplyWebSocketApiA38B9853"
+    },
+    "AutoDeploy": true,
+    "StageName": "production"
+   },
+   "Metadata": {
+    "aws:cdk:path": "SwiplyBackendStack/ProductionStage/Resource"
+   }
+  },
+  "CDKMetadata": {
+   "Type": "AWS::CDK::Metadata",
+   "Properties": {
+    "Analytics": "v2:deflate64:H4sIAAAAAAAA/11Oy27CMBD8Fu5mi4LUO1C14haFVj2ijb2NFhIvsh1QZPnfqziFRpzmsTOrKaB4XcFqgTe/1Oa8bLmGeAiozwpv/hi1NJaDQPzy5EqRVu1+7IPfyZt0yHZ++nPucm/IBg5D6eTKhtyHSNPSvPCceFR3LZMN8+jkJGUGi52YGuIn1tO3TJJqsasNQnzvrQ4sedmcl+Q69p7FJsXYQaxk6mcspWU95FxmSfn1Eb2n4GEzgvJr2Pb6TGGLnhReuMFANxyuBcRvqg8y3jYXHn+M8PAq6QP9y70N1Di8z3qST+FDwCaPzCQlVZGX3mlSedTosm2SsmIITv7lWhRQrGG1OHnmpett4I6gmvAXkcd67vgBAAA="
+   },
+   "Metadata": {
+    "aws:cdk:path": "SwiplyBackendStack/CDKMetadata/Default"
+   }
+  }
+ },
+ "Parameters": {
+  "BootstrapVersion": {
+   "Type": "AWS::SSM::Parameter::Value<String>",
+   "Default": "/cdk-bootstrap/hnb659fds/version",
+   "Description": "Version of the CDK Bootstrap resources in this environment, automatically retrieved from SSM Parameter Store. [cdk:skip]"
+  }
+ },
+ "Rules": {
+  "CheckBootstrapVersion": {
+   "Assertions": [
+    {
+     "Assert": {
+      "Fn::Not": [
+       {
+        "Fn::Contains": [
+         [
+          "1",
+          "2",
+          "3",
+          "4",
+          "5"
+         ],
+         {
+          "Ref": "BootstrapVersion"
+         }
+        ]
+       }
+      ]
+     },
+     "AssertDescription": "CDK bootstrap stack version 6 required. Please run 'cdk bootstrap' with a recent version of the CDK CLI."
+    }
+   ]
+  }
+ }
+}

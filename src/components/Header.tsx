@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Video, Menu, X, User, LogOut, Crown } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 
@@ -13,10 +13,24 @@ interface HeaderProps {
   onOpenAuth: () => void;
   user: { email: string; name?: string } | null;
   onSignOut: () => void;
+  onOpenPremium: () => void;
 }
 
-export default function Header({ currentView, setView, onOpenAuth, user, onSignOut }: HeaderProps) {
+export default function Header({ currentView, setView, onOpenAuth, user, onSignOut, onOpenPremium }: HeaderProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [onlineCount, setOnlineCount] = useState<number>(0);
+
+  useEffect(() => {
+    let unsubscribe: () => void;
+    import("../lib/aws").then(({ subscribeToOnlineUsersCount }) => {
+      unsubscribe = subscribeToOnlineUsersCount((count) => {
+        setOnlineCount(count);
+      });
+    });
+    return () => {
+      if (unsubscribe) unsubscribe();
+    };
+  }, []);
 
   const navItems = [
     { label: "Home", id: "home" as const },
@@ -26,7 +40,15 @@ export default function Header({ currentView, setView, onOpenAuth, user, onSignO
   ];
 
   const handleNavClick = (viewId: "home" | "chat" | "safety" | "about") => {
-    setView(viewId);
+    if (viewId === "chat") {
+      if (!user) {
+        onOpenAuth();
+      } else {
+        window.open("/?view=chat", "_blank");
+      }
+    } else {
+      setView(viewId);
+    }
     setMobileMenuOpen(false);
   };
 
@@ -47,15 +69,15 @@ export default function Header({ currentView, setView, onOpenAuth, user, onSignO
             {/* Cute Swiply Mascot SVG - Authentic Yellow */}
             <svg className="h-8 w-8 drop-shadow-md" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
               {/* Left Ear */}
-              <circle cx="24" cy="50" r="11" fill="#f2b305" />
-              <circle cx="24" cy="50" r="7" fill="#b88100" />
+              <circle cx="24" cy="50" r="11" fill="#4F8FFF" />
+              <circle cx="24" cy="50" r="7" fill="#2A5CBF" />
               
               {/* Right Ear */}
-              <circle cx="76" cy="50" r="11" fill="#f2b305" />
-              <circle cx="76" cy="50" r="7" fill="#b88100" />
+              <circle cx="76" cy="50" r="11" fill="#4F8FFF" />
+              <circle cx="76" cy="50" r="7" fill="#2A5CBF" />
               
               {/* Swiply Head */}
-              <circle cx="50" cy="50" r="28" fill="#f2b305" />
+              <circle cx="50" cy="50" r="28" fill="#4F8FFF" />
               
               {/* Heart Face */}
               <path d="M 50,38 C 42,28 32,34 33,45 C 34,54 45,61 50,64 C 55,61 66,54 67,45 C 68,34 58,28 50,38 Z" fill="#fff7b2" />
@@ -80,6 +102,15 @@ export default function Header({ currentView, setView, onOpenAuth, user, onSignO
           </span>
         </button>
 
+        {/* Real-time online user count indicator */}
+        <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-extrabold shadow-sm shadow-emerald-500/5 select-none animate-pulse-slow">
+          <span className="relative flex h-2 w-2">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+          </span>
+          <span>{onlineCount} Online</span>
+        </div>
+
         {/* Desktop Navigation Links */}
         <nav className="hidden items-center gap-8 md:flex">
           {navItems.map((item) => {
@@ -97,20 +128,29 @@ export default function Header({ currentView, setView, onOpenAuth, user, onSignO
                 {isActive && (
                   <motion.div
                     layoutId="activeNavIndicator"
-                    className="absolute -bottom-1 left-0 h-0.5 w-full bg-[#f2b305]"
+                    className="absolute -bottom-1 left-0 h-0.5 w-full bg-[#4F8FFF]"
                     transition={{ type: "spring", stiffness: 380, damping: 30 }}
                   />
                 )}
               </button>
             );
           })}
+
+          <button
+            onClick={onOpenPremium}
+            className="group relative flex items-center gap-2 rounded-full bg-gradient-to-r from-amber-400 to-yellow-500 px-4 py-1.5 text-sm font-extrabold text-black shadow-lg shadow-amber-500/20 transition-all hover:scale-105 hover:shadow-amber-500/40"
+          >
+            <Crown className="h-4 w-4 drop-shadow-sm" />
+            <span>VIP Access</span>
+            <div className="absolute -right-1 -top-1 animate-pulse text-[10px]">✨</div>
+          </button>
         </nav>
 
         {/* Action Buttons */}
         <div className="hidden items-center gap-4 md:flex">
           {user ? (
             <div className="flex items-center gap-3 rounded-full bg-white/5 px-4 py-1.5 border border-white/10">
-              <User className="h-4 w-4 text-[#f2b305]" />
+              <User className="h-4 w-4 text-[#4F8FFF]" />
               <span className="text-xs font-medium text-white max-w-[150px] truncate flex items-center gap-1.5">
                 {user.name || user.email.split("@")[0]}
                 {(localStorage.getItem("swiply_premium") === "true" || localStorage.getItem("monkey_premium") === "true" || localStorage.getItem("bharattalk_premium") === "true") && (
@@ -141,7 +181,7 @@ export default function Header({ currentView, setView, onOpenAuth, user, onSignO
         <div className="flex items-center gap-2 md:hidden">
           {user && (
             <div className="flex items-center gap-1.5 rounded-full bg-white/5 px-3 py-1 border border-white/5">
-              <User className="h-3.5 w-3.5 text-[#f2b305]" />
+              <User className="h-3.5 w-3.5 text-[#4F8FFF]" />
               <span className="text-2xs font-medium text-white max-w-[80px] truncate flex items-center gap-1">
                 {user.name || user.email.split("@")[0]}
                 {(localStorage.getItem("swiply_premium") === "true" || localStorage.getItem("monkey_premium") === "true" || localStorage.getItem("bharattalk_premium") === "true") && (
@@ -185,12 +225,23 @@ export default function Header({ currentView, setView, onOpenAuth, user, onSignO
                 >
                   {item.label}
                   {currentView === item.id && (
-                    <span className="h-2 w-2 rounded-full bg-[#f2b305]" />
+                    <span className="h-2 w-2 rounded-full bg-[#4F8FFF]" />
                   )}
                 </button>
               ))}
 
               <div className="my-2 h-[1px] bg-white/10" />
+
+              <button
+                onClick={() => {
+                  onOpenPremium();
+                  setMobileMenuOpen(false);
+                }}
+                className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-amber-400 to-yellow-500 text-black shadow-lg shadow-amber-500/20 hover:scale-[1.02] px-4 py-3 text-sm font-extrabold transition-all cursor-pointer"
+              >
+                <Crown className="h-4 w-4 drop-shadow-sm" />
+                VIP Access
+              </button>
 
               {user ? (
                 <button
@@ -198,7 +249,7 @@ export default function Header({ currentView, setView, onOpenAuth, user, onSignO
                     onSignOut();
                     setMobileMenuOpen(false);
                   }}
-                  className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#f2b305]/15 text-[#f2b305] hover:bg-[#f2b305]/25 px-4 py-3 text-sm font-semibold transition-all cursor-pointer border border-[#f2b305]/25"
+                  className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#4F8FFF]/15 text-[#4F8FFF] hover:bg-[#4F8FFF]/25 px-4 py-3 text-sm font-semibold transition-all cursor-pointer border border-[#4F8FFF]/25"
                   id="btn-mobile-signout"
                 >
                   <LogOut className="h-4 w-4" />
@@ -210,7 +261,7 @@ export default function Header({ currentView, setView, onOpenAuth, user, onSignO
                     onOpenAuth();
                     setMobileMenuOpen(false);
                   }}
-                  className="flex w-full items-center justify-center rounded-xl bg-[#f2b305] text-black shadow-lg shadow-[#f2b305]/20 hover:bg-[#d99e04] px-4 py-3 text-sm font-semibold transition-all cursor-pointer"
+                  className="flex w-full items-center justify-center rounded-xl bg-[#4F8FFF] text-black shadow-lg shadow-[#4F8FFF]/20 hover:bg-[#2A5CBF] px-4 py-3 text-sm font-semibold transition-all cursor-pointer"
                   id="btn-mobile-signin"
                 >
                   Sign In

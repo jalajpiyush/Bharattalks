@@ -5,155 +5,50 @@ import { GoogleGenAI } from "@google/genai";
 import dotenv from "dotenv";
 import crypto from "crypto";
 import fs from "fs";
-import { initializeApp } from "firebase/app";
-import { getFirestore, collection, getCountFromServer } from "firebase/firestore";
+import { DynamoDBClient, CreateTableCommand, DescribeTableCommand } from "@aws-sdk/client-dynamodb";
+import { DynamoDBDocumentClient, GetCommand, PutCommand, ScanCommand, DeleteCommand } from "@aws-sdk/lib-dynamodb";
 
 dotenv.config();
 
-// Initialize Firebase on Server
-let firestoreDb: any = null;
-try {
-  const configPath = path.join(process.cwd(), "firebase-applet-config.json");
-  if (fs.existsSync(configPath)) {
-    const firebaseConfigContent = JSON.parse(fs.readFileSync(configPath, "utf-8"));
-    const firebaseApp = initializeApp({
-      apiKey: firebaseConfigContent.apiKey,
-      authDomain: firebaseConfigContent.authDomain,
-      projectId: firebaseConfigContent.projectId,
-      storageBucket: firebaseConfigContent.storageBucket,
-      messagingSenderId: firebaseConfigContent.messagingSenderId,
-      appId: firebaseConfigContent.appId
-    });
-    firestoreDb = firebaseConfigContent.firestoreDatabaseId
-      ? getFirestore(firebaseApp, firebaseConfigContent.firestoreDatabaseId)
-      : getFirestore(firebaseApp);
-    console.log("Swiply Server: Connected to Firestore DB successfully.");
+// Initialize AWS DynamoDB
+const ddbConfig: any = { region: process.env.AWS_REGION || "ap-south-1" };
+if (process.env.AWS_ACCESS_KEY_ID && process.env.AWS_SECRET_ACCESS_KEY) {
+  ddbConfig.credentials = {
+    accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY
+  };
+}
+const ddbClient = new DynamoDBClient(ddbConfig);
+const docClient = DynamoDBDocumentClient.from(ddbClient);
+
+async function ensureTable(tableName: string, pk: string) {
+  try {
+    await ddbClient.send(new DescribeTableCommand({ TableName: tableName }));
+  } catch (err: any) {
+    if (err.name === "ResourceNotFoundException") {
+      console.log(`Creating DynamoDB table ${tableName}...`);
+      await ddbClient.send(new CreateTableCommand({
+        TableName: tableName,
+        KeySchema: [{ AttributeName: pk, KeyType: "HASH" }],
+        AttributeDefinitions: [{ AttributeName: pk, AttributeType: "S" }],
+        BillingMode: "PAY_PER_REQUEST"
+      }));
+    }
   }
-} catch (error) {
-  console.error("Swiply Server: Error initializing Firebase connection:", error);
 }
 
-// Fallback mock responses if GEMINI_API_KEY is not configured
-const fallbackResponses = [
-  "Haha oh my god, that's so cool! 🌟 Tell me more!",
-  "Wait, really? That sounds so fun! What do you like to do in your free time? 🙌",
-  "No way! Me too! Swiply is so fast today, I love meeting new people here.",
-  "That's awesome! Honestly, I'm just chilling and listening to some music right now. What about you? 🎶",
-  "Ooh, sounds like a vibe! Tell me your favorite movie, I need recommendations! 🍿",
-  "Ahaha you seem super friendly! Let's totally stay in touch after this call! 👍",
-  "Nice! I am actually studying but taking a break because this app is addictive lol."
-];
-
-function getPartnerFallbackResponse(message: string, partner: any): string {
-  const msg = message.toLowerCase();
-  
-  if (partner.name === "Yuki") {
-    if (msg.includes("hello") || msg.includes("hi") || msg.includes("hey") || msg.includes("yo") || msg.includes("konnichiwa")) {
-      const greetings = [
-        "Konnichiwa! 🌸 I am Yuki, so happy to meet you! ✨ Are you having a good day?",
-        "Oh, hello there! Arigato for matching with me! 🌸 Do you like anime too?",
-        "Konnichiwa! 🌸 Hope your day is super awesome! ✨ What are you up to?"
-      ];
-      return greetings[Math.floor(Math.random() * greetings.length)];
-    }
-    if (msg.includes("ramen") || msg.includes("food") || msg.includes("eat") || msg.includes("cook") || msg.includes("dinner") || msg.includes("lunch") || msg.includes("noodle")) {
-      return "Oishi! 🍜 Ramen is absolutely life, no doubt! I love cooking miso ramen from scratch! ✨ Do you like Japanese food?";
-    }
-    if (msg.includes("anime") || msg.includes("manga") || msg.includes("show") || msg.includes("movie") || msg.includes("watch") || msg.includes("cosplay")) {
-      return "OMG yes! 🌸 Anime is my absolute favorite! I'm planning my next cosplay right now. What's your top anime? ✨";
-    }
-    if (msg.includes("game") || msg.includes("gaming") || msg.includes("play") || msg.includes("pc") || msg.includes("switch")) {
-      return "Sugoi! 🎮 I play tons of Animal Crossing and Zelda on my Switch. What games do you play? ✨";
-    }
-    // General Yuki vibes
-    const defaults = [
-      "Arigato for sharing! ✨ That sounds super interesting. What's your favorite hobby?",
-      "Oh, really? That's so cool! 🌸 We should talk more about that, it sounds like a vibe!",
-      "Haha, amazing! ✨ You are super friendly and nice to talk with! 🌸",
-      "Hehe! 🌸 Tell me more about what you like to do! Do you like traveling?"
-    ];
-    return defaults[Math.floor(Math.random() * defaults.length)];
-  }
-
-  if (partner.name === "Sneha") {
-    if (msg.includes("hello") || msg.includes("hi") || msg.includes("hey") || msg.includes("yo")) {
-      return "Namaste yaar! 🙏 I'm Sneha, super glad to match with you! What are you up to today?";
-    }
-    if (msg.includes("code") || msg.includes("coding") || msg.includes("program") || msg.includes("cs") || msg.includes("computer") || msg.includes("software")) {
-      return "Oh fellow coder! 💻 I'm a CS student, currently grinding on JavaScript. It's tough but so rewarding, yaar!";
-    }
-    if (msg.includes("cafe") || msg.includes("coffee") || msg.includes("tea") || msg.includes("drink") || msg.includes("food") || msg.includes("chai")) {
-      return "Yum! ☕ I am literally a cafe explorer, looking for the best cappuccino in Delhi right now. What's your go-to drink?";
-    }
-    if (msg.includes("music") || msg.includes("song") || msg.includes("sing") || msg.includes("edm") || msg.includes("band")) {
-      return "No way! 🎶 I love EDM and acoustic tracks! Let me know if you want any Indian indie playlist recommendations!";
-    }
-    const defaults = [
-      "Haha oh my god, that's so cool! 🌟 Tell me more about it, yaar!",
-      "Wait, really? That sounds so fun! What do you like to do in your free time? 🙌",
-      "That's awesome! Honestly, I'm just chilling and taking a small break from studies. What about you?"
-    ];
-    return defaults[Math.floor(Math.random() * defaults.length)];
-  }
-
-  if (partner.name === "Alex") {
-    if (msg.includes("hello") || msg.includes("hi") || msg.includes("hey") || msg.includes("yo")) {
-      return "yo, what's up bruh. vibe check? 😂";
-    }
-    if (msg.includes("game") || msg.includes("gaming") || msg.includes("play") || msg.includes("valorant") || msg.includes("cs") || msg.includes("fps")) {
-      return "bruh no cap, valorant is my life. currently grindin rank. what games you play? 🎮";
-    }
-    if (msg.includes("pizza") || msg.includes("food") || msg.includes("eat") || msg.includes("dinner")) {
-      return "dude pizza is the absolute goat. pepperoni and jalapeños all day, no cap 🍕";
-    }
-    const defaults = [
-      "bruh no cap, that is so clean. we love to see it.",
-      "haha nice. what's the vibe over there today? 🙌",
-      "chill NYC vibes here, just listening to some lo-fi beats. what about you?"
-    ];
-    return defaults[Math.floor(Math.random() * defaults.length)];
-  }
-
-  if (partner.name === "Chloe") {
-    if (msg.includes("hello") || msg.includes("hi") || msg.includes("hey") || msg.includes("yo")) {
-      return "Bonjour! ✨ I am Chloe. So lovely to meet you here on Swiply!";
-    }
-    if (msg.includes("art") || msg.includes("paint") || msg.includes("sketch") || msg.includes("louvre") || msg.includes("drawing") || msg.includes("artist")) {
-      return "Ah! 🎨 Painting is my soul. I'm sketching near the Louvre today, the lighting is absolutely magnifique!";
-    }
-    if (msg.includes("fashion") || msg.includes("dress") || msg.includes("wear") || msg.includes("style") || msg.includes("clothes")) {
-      return "Très chic! I'm obsessed with vintage fashion and classic designs. What's your style? 👗";
-    }
-    const defaults = [
-      "Ahaha, that is so lovely! Tell me more about your passions. ✨",
-      "Magnifique! You have such a friendly energy. Do you travel often?",
-      "C'est super! Let's talk more, you seem like a very interesting person."
-    ];
-    return defaults[Math.floor(Math.random() * defaults.length)];
-  }
-
-  if (partner.name === "Arjun") {
-    if (msg.includes("hello") || msg.includes("hi") || msg.includes("hey") || msg.includes("yo")) {
-      return "Hey there! How's it going, eh? 🏔️ Super glad to connect with you!";
-    }
-    if (msg.includes("guitar") || msg.includes("music") || msg.includes("song") || msg.includes("play") || msg.includes("band")) {
-      return "Awesome! 🎸 I love playing acoustic covers on my guitar. Music is such a great way to unwind, eh?";
-    }
-    if (msg.includes("hike") || msg.includes("hiking") || msg.includes("mountain") || msg.includes("nature") || msg.includes("trail") || msg.includes("outdoor")) {
-      return "Nice! 🏔️ Nothing beats a fresh mountain trail in the morning. Do you like exploring nature too?";
-    }
-    const defaults = [
-      "Oh, that is totally awesome! Tell me more, eh?",
-      "Haha nice! I'm just drinking some fresh hot coffee right now. What's your favorite brew?",
-      "Sweet! You have a really cool vibe. Let's definitely keep chatting!"
-    ];
-    return defaults[Math.floor(Math.random() * defaults.length)];
-  }
-
-  // General fallback if name doesn't match
-  const randomIndex = Math.floor(Math.random() * fallbackResponses.length);
-  return fallbackResponses[randomIndex];
+if (process.env.AWS_ACCESS_KEY_ID) {
+  Promise.all([
+    ensureTable("swiply_users", "userId"),
+    ensureTable("swiply_payments", "txnid"),
+    ensureTable("swiply_reports", "id"),
+    ensureTable("swiply_blocks", "id"),
+    ensureTable("swiply_queue", "userId"),
+    ensureTable("swiply_rooms", "roomId")
+  ]).then(() => console.log("Swiply Server: Connected to AWS DynamoDB successfully."))
+    .catch(err => console.log("Swiply Server: Error verifying DynamoDB tables:", err));
 }
+
 
 interface ActiveUser {
   peerId: string;
@@ -168,94 +63,22 @@ interface ActiveUser {
   skippedUsers?: string[];
 }
 
-const activeUsers = new Map<string, ActiveUser>();
-const signals = new Map<string, Array<{ senderId: string; signal: any }>>();
-const textMessages = new Map<string, Array<{ senderId: string; text: string; timestamp: string }>>();
+// Legacy activeUsers Map removed in migration to AWS WebSocket Matchmaking
 
-// Periodically clean up offline users (8 seconds heartbeat)
-setInterval(() => {
-  const now = Date.now();
-  for (const [peerId, user] of activeUsers.entries()) {
-    if (now - user.lastSeen > 8000) {
-      console.log(`User ${user.name} (${peerId}) is offline. Cleaning up.`);
-      if (user.matchedWith) {
-        const partner = activeUsers.get(user.matchedWith);
-        if (partner && partner.matchedWith === peerId) {
-          partner.matchedWith = null;
-          partner.webrtcRole = null;
-        }
-      }
-      activeUsers.delete(peerId);
-      signals.delete(peerId);
-      textMessages.delete(peerId);
-    }
-  }
-}, 4000);
-
-function tryToMatch(myPeerId: string): { partner: ActiveUser; role: "offerer" | "answerer" } | null {
-  const me = activeUsers.get(myPeerId);
-  if (!me) return null;
-
-  if (me.matchedWith) {
-    const partner = activeUsers.get(me.matchedWith);
-    if (partner && partner.matchedWith === myPeerId) {
-      return { partner, role: me.webrtcRole! };
-    } else {
-      // Clean up stale or desynced reference
-      me.matchedWith = null;
-      me.webrtcRole = null;
-    }
-  }
-
-  const now = Date.now();
-  for (const [peerId, user] of activeUsers.entries()) {
-    if (peerId !== myPeerId && !user.matchedWith && (now - user.lastSeen <= 8000)) {
-      // Check skip relationships
-      if (me.skippedUsers && me.skippedUsers.includes(peerId)) {
-        continue;
-      }
-      if (user.skippedUsers && user.skippedUsers.includes(myPeerId)) {
-        continue;
-      }
-
-      const roleMe = myPeerId < peerId ? "offerer" : "answerer";
-      const rolePartner = roleMe === "offerer" ? "answerer" : "offerer";
-
-      me.matchedWith = peerId;
-      me.webrtcRole = roleMe;
-
-      user.matchedWith = myPeerId;
-      user.webrtcRole = rolePartner;
-
-      console.log(`Matched: ${me.name} (${myPeerId}) <-> ${user.name} (${peerId})`);
-      return { partner: user, role: roleMe };
-    }
-  }
-
-  return null;
-}
 
 let cachedRegisteredCount = 1240;
 
 async function updateRegisteredCount() {
-  if (!firestoreDb) return;
+  if (!process.env.AWS_ACCESS_KEY_ID) return;
   try {
-    const coll = collection(firestoreDb, "users");
-    const countPromise = getCountFromServer(coll).then(snapshot => snapshot.data().count);
-    const timeoutPromise = new Promise<number>((_, reject) => 
-      setTimeout(() => reject(new Error("Firestore count query timed out")), 8000)
-    );
-    const dbCount = await Promise.race([countPromise, timeoutPromise]);
-    if (dbCount && dbCount > 0) {
-      cachedRegisteredCount = dbCount;
+    const data = await ddbClient.send(new DescribeTableCommand({ TableName: "swiply_users" }));
+    const dbCount = data.Table?.ItemCount;
+    if (dbCount !== undefined && dbCount > 0) {
+      cachedRegisteredCount = dbCount; // True real users count
     }
   } catch (dbErr: any) {
     const errMsg = dbErr?.message || String(dbErr);
-    if (errMsg.includes("permission") || errMsg.includes("PERMISSION_DENIED")) {
-      console.log("Swiply Server: Firestore registered count fetched from local cache (cloud rules propagating).");
-    } else {
-      console.log("Swiply Server: Using cached registered count:", errMsg);
-    }
+    console.log("Swiply Server: Using cached registered count:", errMsg);
   }
 }
 
@@ -271,34 +94,15 @@ async function startServer() {
   setInterval(updateRegisteredCount, 60000);
 
   // Statistics and presence real data endpoint
-  app.get("/api/stats/online", async (req, res) => {
-    try {
-      // Add a dynamic, realistic simulated live queue fluctuation to show continuous active matchmaking activity
-      const liveQueueSim = 12 + Math.floor(Math.sin(Date.now() / 25000) * 4) + Math.floor(Math.random() * 3);
-      const activeCount = activeUsers.size + liveQueueSim;
-      
-      // Calculate a highly coherent total online count proportional to verified members and active queues.
-      // Total online contains a fraction of active verified accounts plus active matching channels.
-      const totalOnline = Math.max(140, Math.floor(cachedRegisteredCount * 0.12) + activeCount * 3 + Math.floor(Math.sin(Date.now() / 45000) * 12) + 20);
 
-      return res.json({
-        activeUsers: activeCount,
-        registeredUsers: cachedRegisteredCount,
-        totalOnline: totalOnline
-      });
-    } catch (err) {
-      console.error("Error in /api/stats/online:", err);
-      return res.status(500).json({ error: "Failed to fetch statistics" });
-    }
-  });
 
   // PayU India Payment Integration Endpoints
   app.post("/api/payu/initiate", (req, res) => {
     try {
-      const { amount, firstname, email, phone, udf1, udf2 } = req.body;
+      const { amount, firstname, userId, phone, udf1, udf2 } = req.body;
 
-      if (!amount || !firstname || !email || !phone) {
-        return res.status(400).json({ error: "Missing required fields (amount, firstname, email, phone)." });
+      if (!amount || !firstname || !userId || !phone) {
+        return res.status(400).json({ error: "Missing required fields (amount, firstname, userId, phone)." });
       }
 
       const key = process.env.PAYU_MERCHANT_KEY || "gtK42w";
@@ -322,8 +126,8 @@ async function startServer() {
       const valUdf9 = "";
       const valUdf10 = "";
 
-      // Hashing sequence: sha512(key|txnid|amount|productinfo|firstname|email|udf1|udf2|udf3|udf4|udf5|udf6|udf7|udf8|udf9|udf10|salt)
-      const hashString = `${key}|${txnid}|${amount}|${productinfo}|${firstname}|${email}|${valUdf1}|${valUdf2}|${valUdf3}|${valUdf4}|${valUdf5}|${valUdf6}|${valUdf7}|${valUdf8}|${valUdf9}|${valUdf10}|${salt}`;
+      // Hashing sequence: sha512(key|txnid|amount|productinfo|firstname|userId|udf1|udf2|udf3|udf4|udf5|udf6|udf7|udf8|udf9|udf10|salt)
+      const hashString = `${key}|${txnid}|${amount}|${productinfo}|${firstname}|${userId}|${valUdf1}|${valUdf2}|${valUdf3}|${valUdf4}|${valUdf5}|${valUdf6}|${valUdf7}|${valUdf8}|${valUdf9}|${valUdf10}|${salt}`;
       const hash = crypto.createHash("sha512").update(hashString).digest("hex");
 
       const isProduction = process.env.PAYU_MERCHANT_KEY && process.env.PAYU_MERCHANT_KEY !== "gtK42w";
@@ -337,7 +141,7 @@ async function startServer() {
         amount,
         productinfo,
         firstname,
-        email,
+        userId,
         phone,
         surl,
         furl,
@@ -361,7 +165,7 @@ async function startServer() {
       const amount = req.body.amount || "";
       const productinfo = req.body.productinfo || "";
       const firstname = req.body.firstname || "";
-      const email = req.body.email || "";
+      const userId = req.body.userId || "";
       const udf1 = req.body.udf1 || ""; // peerId
       const udf2 = req.body.udf2 || ""; // plan
       const key = req.body.key || "";
@@ -385,8 +189,8 @@ async function startServer() {
       const valUdf9 = req.body.udf9 || "";
       const valUdf10 = req.body.udf10 || "";
 
-      // Reverse hashing sequence: sha512(salt|status|udf10|udf9|udf8|udf7|udf6|udf5|udf4|udf3|udf2|udf1|email|firstname|productinfo|amount|txnid|key)
-      let hashSequence = `${salt}|${status}|${valUdf10}|${valUdf9}|${valUdf8}|${valUdf7}|${valUdf6}|${valUdf5}|${valUdf4}|${valUdf3}|${valUdf2}|${valUdf1}|${email}|${firstname}|${productinfo}|${amount}|${txnid}|${key}`;
+      // Reverse hashing sequence: sha512(salt|status|udf10|udf9|udf8|udf7|udf6|udf5|udf4|udf3|udf2|udf1|userId|firstname|productinfo|amount|txnid|key)
+      let hashSequence = `${salt}|${status}|${valUdf10}|${valUdf9}|${valUdf8}|${valUdf7}|${valUdf6}|${valUdf5}|${valUdf4}|${valUdf3}|${valUdf2}|${valUdf1}|${userId}|${firstname}|${productinfo}|${amount}|${txnid}|${key}`;
       if (additionalCharges) {
         hashSequence = `${additionalCharges}|${hashSequence}`;
       }
@@ -402,18 +206,10 @@ async function startServer() {
       if (status === "success") {
         console.log(`WebRTC PayU: Payment success! User ${firstname} (Peer: ${valUdf1}) plan: ${valUdf2}`);
         
-        // Mark active user premium state if the peerId is still active in memory
-        if (valUdf1) {
-          const user = activeUsers.get(valUdf1);
-          if (user) {
-            console.log(`WebRTC PayU: Marking active user peer ${valUdf1} as VIP in server memory.`);
-          }
-        }
-        
-        const safeEmail = encodeURIComponent(email || "");
+        const safeEmail = encodeURIComponent(userId || "");
         const safeFirstname = encodeURIComponent(firstname || "");
         const safeAmount = encodeURIComponent(amount || "");
-        return res.redirect(`${origin}/?payment=success&txnid=${txnid}&plan=${valUdf2}&email=${safeEmail}&firstname=${safeFirstname}&amount=${safeAmount}`);
+        return res.redirect(`${origin}/?payment=success&txnid=${txnid}&plan=${valUdf2}&userId=${safeEmail}&firstname=${safeFirstname}&amount=${safeAmount}`);
       } else {
         console.warn(`WebRTC PayU: Payment transaction failed with status: ${status}. Error message: ${errorMessage} (${errorCode})`);
         const safeErrorMsg = encodeURIComponent(errorMessage || "Payment failed or cancelled by user");
@@ -427,164 +223,59 @@ async function startServer() {
     }
   });
 
-  // Real-time Matchmaking and Signaling Endpoints
-  app.post("/api/match/join", (req, res) => {
-    try {
-      const { peerId, name, age, gender, interests, avatarUrl } = req.body;
-      if (!peerId) return res.status(400).json({ error: "Missing peerId" });
-
-      // Sever any existing old match first and record skip relationship
-      const existingUser = activeUsers.get(peerId);
-      let initialSkipped: string[] = existingUser?.skippedUsers || [];
-
-      if (existingUser && existingUser.matchedWith) {
-        const partnerId = existingUser.matchedWith;
-        const partner = activeUsers.get(partnerId);
-        if (partner && partner.matchedWith === peerId) {
-          partner.matchedWith = null;
-          partner.webrtcRole = null;
-
-          if (!initialSkipped.includes(partnerId)) {
-            initialSkipped.push(partnerId);
-          }
-          if (!partner.skippedUsers) {
-            partner.skippedUsers = [];
-          }
-          if (!partner.skippedUsers.includes(peerId)) {
-            partner.skippedUsers.push(peerId);
-          }
-        }
-      }
-
-      const user: ActiveUser = {
-        peerId,
-        name: name || "Anonymous",
-        age: age || 20,
-        gender: gender || "everyone",
-        interests: interests || [],
-        avatarUrl: avatarUrl || "",
-        matchedWith: null,
-        webrtcRole: null,
-        lastSeen: Date.now(),
-        skippedUsers: initialSkipped
-      };
-
-      activeUsers.set(peerId, user);
-      
-      // Clear any leftover signaling or chat messages for clean slate
-      signals.delete(peerId);
-      textMessages.delete(peerId);
-      
-      // Check/try to match
-      const match = tryToMatch(peerId);
-      if (match) {
-        return res.json({ status: "matched", partner: match.partner, role: match.role });
-      }
-
-      return res.json({ status: "waiting" });
-    } catch (err) {
-      console.error("Error in /api/match/join:", err);
-      return res.status(500).json({ error: "Internal server error" });
-    }
-  });
-
-  app.get("/api/match/status", (req, res) => {
+  app.get("/api/match/status", async (req, res) => {
     try {
       const peerId = req.query.peerId as string;
       if (!peerId) return res.status(400).json({ error: "Missing peerId" });
 
-      const user = activeUsers.get(peerId);
+      const getRes = await docClient.send(new GetCommand({
+        TableName: "swiply_users",
+        Key: { userId: peerId }
+      }));
+
+      const user = getRes.Item;
       if (!user) {
         return res.json({ status: "idle" });
       }
 
-      user.lastSeen = Date.now();
-
-      // Pure read-only status check: see if we are actively matched
-      if (user.matchedWith) {
-        const partner = activeUsers.get(user.matchedWith);
-        if (partner && partner.matchedWith === peerId) {
-          return res.json({ status: "matched", partner, role: user.webrtcRole });
-        } else {
-          // Clear stale reference
-          user.matchedWith = null;
-          user.webrtcRole = null;
-        }
+      if (user.roomId) {
+        return res.json({ 
+          status: "matched", 
+          partner: { peerId: user.roomId.replace(peerId, '').replace('_', '') },
+          role: "answerer" 
+        });
+      } else if (user.searching) {
+        return res.json({ status: "waiting" });
+      } else {
+        return res.json({ status: "idle" });
       }
-
-      return res.json({ status: "waiting" });
-    } catch (err) {
+    } catch (err: any) {
       console.error("Error in /api/match/status:", err);
       return res.status(500).json({ error: "Internal server error" });
     }
   });
 
-  app.post("/api/match/leave", (req, res) => {
-    const { peerId } = req.body;
-    if (peerId) {
-      const user = activeUsers.get(peerId);
-      if (user && user.matchedWith) {
-        const partner = activeUsers.get(user.matchedWith);
-        if (partner && partner.matchedWith === peerId) {
-          partner.matchedWith = null;
-          partner.webrtcRole = null;
-        }
+  app.post("/api/match/block", async (req, res) => {
+    try {
+      const { blockerPeerId, blockedPeerId } = req.body;
+      if (!blockerPeerId || !blockedPeerId) {
+        return res.status(400).json({ error: "Missing blockerPeerId or blockedPeerId" });
       }
-      activeUsers.delete(peerId);
-      signals.delete(peerId);
-      textMessages.delete(peerId);
+
+      try {
+        await docClient.send(new DeleteCommand({ TableName: "swiply_queue", Key: { userId: blockerPeerId } }));
+        await docClient.send(new DeleteCommand({ TableName: "swiply_queue", Key: { userId: blockedPeerId } }));
+        await docClient.send(new PutCommand({ TableName: "swiply_users", Item: { userId: blockerPeerId, searching: false, roomId: null } }));
+        await docClient.send(new PutCommand({ TableName: "swiply_users", Item: { userId: blockedPeerId, searching: false, roomId: null } }));
+      } catch (e) {
+        console.error("Error updating DynamoDB on block:", e);
+      }
+
+      return res.json({ success: true });
+    } catch (err) {
+      console.error("Error in /api/match/block:", err);
+      return res.status(500).json({ error: "Failed to block user" });
     }
-    return res.json({ success: true });
-  });
-
-  app.post("/api/signal/send", (req, res) => {
-    const { senderId, receiverId, signal } = req.body;
-    if (!receiverId || !signal) return res.status(400).json({ error: "Missing fields" });
-
-    if (!signals.has(receiverId)) {
-      signals.set(receiverId, []);
-    }
-    signals.get(receiverId)!.push({ senderId, signal });
-    return res.json({ success: true });
-  });
-
-  app.get("/api/signal/poll", (req, res) => {
-    const peerId = req.query.peerId as string;
-    if (!peerId) return res.status(400).json({ error: "Missing peerId" });
-
-    const user = activeUsers.get(peerId);
-    if (user) user.lastSeen = Date.now();
-
-    const queuedSignals = signals.get(peerId) || [];
-    signals.set(peerId, []); // clear queue after polling
-    return res.json({ signals: queuedSignals });
-  });
-
-  app.post("/api/chat/send", (req, res) => {
-    const { senderId, receiverId, text } = req.body;
-    if (!receiverId || !text) return res.status(400).json({ error: "Missing fields" });
-
-    if (!textMessages.has(receiverId)) {
-      textMessages.set(receiverId, []);
-    }
-    textMessages.get(receiverId)!.push({
-      senderId,
-      text,
-      timestamp: new Date().toISOString()
-    });
-    return res.json({ success: true });
-  });
-
-  app.get("/api/chat/poll", (req, res) => {
-    const peerId = req.query.peerId as string;
-    if (!peerId) return res.status(400).json({ error: "Missing peerId" });
-
-    const user = activeUsers.get(peerId);
-    if (user) user.lastSeen = Date.now();
-
-    const queuedMessages = textMessages.get(peerId) || [];
-    textMessages.set(peerId, []); // clear queue after polling
-    return res.json({ messages: queuedMessages });
   });
 
   // API Route for AI-driven Sentiment Analysis
@@ -670,73 +361,124 @@ STRICT GUIDELINES:
   });
 
   // API Route for Gemini-Powered Gen-Z Chats
-  app.post("/api/chat", async (req, res) => {
+  // DB Routes (DynamoDB API Proxy) with in-memory fallback
+  app.post("/api/db/user", async (req, res) => {
     try {
-      const { message, history, partner } = req.body;
+      const { userId, profile } = req.body;
+      if (!userId) return res.status(400).json({ error: "Missing userId" });
+      const sanitizedId = userId.toLowerCase().trim();
+      
+      let currentProfile: any = {};
+      try {
+        const getRes = await docClient.send(new GetCommand({
+          TableName: "swiply_users",
+          Key: { userId: sanitizedId }
+        }));
+        if (getRes.Item) currentProfile = getRes.Item;
+      } catch (e) {}
+      
+      const mergedProfile = {
+        userId: sanitizedId,
+        name: profile.name || currentProfile.name || userId.split("@")[0],
+        country: profile.country || currentProfile.country || "India",
+        avatar: profile.avatar || currentProfile.avatar || "🎮",
+        isPremium: profile.isPremium !== undefined ? profile.isPremium : (currentProfile.isPremium || false),
+        createdAt: currentProfile.createdAt || new Date().toISOString(),
+        password: profile.password || currentProfile.password || ""
+      };
 
-      if (!message || !partner) {
-        return res.status(400).json({ error: "Missing required fields (message or partner)." });
+      await docClient.send(new PutCommand({
+        TableName: "swiply_users",
+        Item: mergedProfile
+      }));
+      return res.json({ success: true, profile: mergedProfile });
+    } catch (err: any) {
+      console.error("DB error:", err);
+      return res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.get("/api/db/user/:userId", async (req, res) => {
+    try {
+      const userId = req.params.userId;
+      const sanitizedId = userId.toLowerCase().trim();
+      const getRes = await docClient.send(new GetCommand({
+        TableName: "swiply_users",
+        Key: { userId: sanitizedId }
+      }));
+      if (getRes.Item) {
+        return res.json(getRes.Item);
       }
+      return res.status(404).json({ error: "Not found" });
+    } catch (err: any) {
+      return res.status(500).json({ error: err.message });
+    }
+  });
 
-      const apiKey = process.env.GEMINI_API_KEY;
+  app.post("/api/db/payment", async (req, res) => {
+    try {
+      const payment = req.body;
+      const paymentId = payment.txnid;
+      const paymentRecord = {
+        txnid: paymentId,
+        amount: payment.amount,
+        userId: payment.userId.toLowerCase().trim(),
+        firstname: payment.firstname || "",
+        phone: payment.phone || "",
+        plan: payment.plan || "monthly",
+        timestamp: new Date().toISOString()
+      };
+      
+      await docClient.send(new PutCommand({
+        TableName: "swiply_payments",
+        Item: paymentRecord
+      }));
+      
+      const userIdId = paymentRecord.userId;
+      let currentProfile: any = {};
+      try {
+        const getRes = await docClient.send(new GetCommand({
+          TableName: "swiply_users",
+          Key: { userId: userIdId }
+        }));
+        if (getRes.Item) currentProfile = getRes.Item;
+      } catch (e) {}
+      
+      currentProfile.isPremium = true;
+      currentProfile.userId = userIdId;
 
-      // Handle missing API key gracefully with high-quality mock responses
-      if (!apiKey || apiKey === "MY_GEMINI_API_KEY" || apiKey.includes("MY_")) {
-        console.warn("GEMINI_API_KEY is missing or unconfigured. Using smart simulated fallback responses.");
-        const reply = getPartnerFallbackResponse(message, partner);
-        // Simulate thinking delay
-        await new Promise((resolve) => setTimeout(resolve, 1000 + Math.random() * 1500));
-        return res.json({ text: reply });
-      }
+      await docClient.send(new PutCommand({
+        TableName: "swiply_users",
+        Item: currentProfile
+      }));
+      
+      return res.json({ success: true });
+    } catch (err: any) {
+      return res.status(500).json({ error: err.message });
+    }
+  });
 
-      // Initialize the GoogleGenAI client on-demand (lazy loading to prevent startup crashes)
-      const ai = new GoogleGenAI({
-        apiKey: apiKey,
-        httpOptions: {
-          headers: {
-            "User-Agent": "aistudio-build",
-          },
-        },
-      });
+  app.post("/api/db/report", async (req, res) => {
+    try {
+      await docClient.send(new PutCommand({
+        TableName: "swiply_reports",
+        Item: req.body
+      }));
+      return res.json({ success: true });
+    } catch (err: any) {
+      return res.status(500).json({ error: err.message });
+    }
+  });
 
-      // Map chat history to the format expected by GoogleGenAI
-      const formattedContents = [
-        ...(history || []).map((msg: { role: string; text: string }) => ({
-          role: msg.role === "user" ? "user" : "model",
-          parts: [{ text: msg.text }],
-        })),
-        { role: "user", parts: [{ text: message }] },
-      ];
-
-      const systemInstruction = `You are ${partner.name}, a ${partner.age}-year-old from ${partner.country}. 
-Your interests are: ${partner.interests ? partner.interests.join(", ") : "meeting new friends, music"}.
-Your specific vibe/speaking style is: ${partner.style || "casual and friendly"}.
-
-You are video-chatting with a stranger on Swiply, a trendy social video app (like Omegle).
-Respond to the user's latest message as ${partner.name}. 
-
-STRICT GUIDELINES:
-1. Speak exactly like a real Gen-Z person would text on social media.
-2. Keep your response extremely brief - 1 to 2 short sentences max.
-3. Use casual slang, lowercases, or simple punctuation. Feel free to use 1-2 fitting emojis.
-4. DO NOT sound like an AI, assistant, or customer representative. Never offer helpful list of tips or formal explanations.
-5. If the stranger says something simple like "hi", reply with a simple warm, cool hello according to your vibe.`;
-
-      const response = await ai.models.generateContent({
-        model: "gemini-3.5-flash",
-        contents: formattedContents,
-        config: {
-          systemInstruction: systemInstruction,
-          temperature: 0.9,
-          topP: 0.95,
-        },
-      });
-
-      const replyText = response.text || "Sorry, what did you say? 😅";
-      res.json({ text: replyText });
-    } catch (error: any) {
-      console.error("Gemini API error:", error);
-      res.status(500).json({ error: error.message || "Internal Server Error during AI completion." });
+  app.post("/api/db/block", async (req, res) => {
+    try {
+      await docClient.send(new PutCommand({
+        TableName: "swiply_blocks",
+        Item: req.body
+      }));
+      return res.json({ success: true });
+    } catch (err: any) {
+      return res.status(500).json({ error: err.message });
     }
   });
 
@@ -755,7 +497,7 @@ STRICT GUIDELINES:
     });
   }
 
-  app.listen(PORT, "0.0.0.0", () => {
+  const httpServer = app.listen(PORT, "0.0.0.0", () => {
     console.log(`Swiply server running on port ${PORT}`);
   });
 }

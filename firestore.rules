@@ -18,7 +18,9 @@ service cloud.firestore {
         && (!data.keys().contains('avatar') || (data.avatar is string && data.avatar.size() <= 20))
         && (!data.keys().contains('isPremium') || data.isPremium is bool)
         && (!data.keys().contains('createdAt') || data.createdAt is string)
-        && (!data.keys().contains('password') || (data.password is string && data.password.size() <= 100));
+        && (!data.keys().contains('password') || (data.password is string && data.password.size() <= 100))
+        && (!data.keys().contains('isOnline') || data.isOnline is bool)
+        && (!data.keys().contains('lastSeen') || true);
     }
 
     // Helper to check standard payment record schema
@@ -36,6 +38,37 @@ service cloud.firestore {
         && (!data.keys().contains('timestamp') || data.timestamp is string);
     }
 
+    // Helper to validate reports schema
+    function isValidUserReport(data) {
+      return data.keys().hasAll(['id', 'reporterPeerId', 'reportedPeerId', 'reason', 'timestamp'])
+        && data.id is string
+        && data.id.size() <= 100
+        && data.reporterPeerId is string
+        && data.reporterPeerId.size() <= 100
+        && data.reportedPeerId is string
+        && data.reportedPeerId.size() <= 100
+        && data.reason is string
+        && data.reason.size() <= 50
+        && data.timestamp is string
+        && (!data.keys().contains('reporterEmail') || (data.reporterEmail is string && data.reporterEmail.size() <= 100))
+        && (!data.keys().contains('reportedName') || (data.reportedName is string && data.reportedName.size() <= 100))
+        && (!data.keys().contains('comments') || (data.comments is string && data.comments.size() <= 500));
+    }
+
+    // Helper to validate blocks schema
+    function isValidUserBlock(data) {
+      return data.keys().hasAll(['id', 'blockerPeerId', 'blockedPeerId', 'timestamp'])
+        && data.id is string
+        && data.id.size() <= 100
+        && data.blockerPeerId is string
+        && data.blockerPeerId.size() <= 100
+        && data.blockedPeerId is string
+        && data.blockedPeerId.size() <= 100
+        && data.timestamp is string
+        && (!data.keys().contains('blockerEmail') || (data.blockerEmail is string && data.blockerEmail.size() <= 100))
+        && (!data.keys().contains('blockedName') || (data.blockedName is string && data.blockedName.size() <= 100));
+    }
+
     match /users/{userId} {
       allow get: if isValidId(userId);
       allow list: if true;
@@ -47,6 +80,30 @@ service cloud.firestore {
       allow read: if isValidId(paymentId);
       allow create: if isValidId(paymentId) && isValidPaymentRecord(request.resource.data);
       allow update, delete: if false;
+    }
+
+    match /reports/{reportId} {
+      allow get: if isValidId(reportId);
+      allow create: if isValidId(reportId) && isValidUserReport(request.resource.data);
+      allow update, delete: if false;
+    }
+
+    match /blocks/{blockId} {
+      allow get: if isValidId(blockId);
+      allow create: if isValidId(blockId) && isValidUserBlock(request.resource.data);
+      allow update, delete: if false;
+    }
+
+    match /matchmaking_queue/{peerId} {
+      allow read, write: if true;
+    }
+
+    match /signals/{signalId} {
+      allow read, write: if true;
+    }
+
+    match /chat_messages/{messageId} {
+      allow read, write: if true;
     }
   }
 }
